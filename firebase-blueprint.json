@@ -1,0 +1,22 @@
+{
+  "entities": {
+    "Notice": {
+      "title": "Class Notice",
+      "description": "Notices posted by teachers for students",
+      "type": "object",
+      "properties": {
+        "content": { "type": "string", "description": "The notice text" },
+        "authorName": { "type": "string", "description": "Teacher's name" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "type": { "type": "string", "enum": ["general", "urgent"] }
+      },
+      "required": ["content", "authorName", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/notices/{noticeId}": {
+      "schema": "Notice",
+      "description": "Collection of all class notices"
+    }
+  }
+}

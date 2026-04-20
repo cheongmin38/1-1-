@@ -1,0 +1,29 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return true; // Simple app using local storage for identification
+    }
+
+    function isValidNotice(data) {
+      return data.content is string && data.content.size() <= 2000
+             && data.authorName is string && data.authorName.size() <= 100
+             && data.createdAt is timestamp;
+    }
+
+    match /notices/{noticeId} {
+      // Everyone can read notices
+      allow read: if true;
+      // Only teachers (identified by some client-side role for this simple demo) can write
+      // In a real production app, we would use auth tokens
+      allow create: if isValidNotice(request.resource.data);
+      allow delete: if true; // In this simple demo, we permit deletion via the UI
+      allow update: if false; 
+    }
+  }
+}

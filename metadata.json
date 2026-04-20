@@ -1,0 +1,6 @@
+{
+  "name": "ClassMate: 스마트 학급 매니저",
+  "description": "우리 반 친구들을 위한 올인원 학교 생활 대시보드. 식단, 시간표, 그리고 Gemini AI를 활용한 알림장 요약 기능을 제공합니다.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}

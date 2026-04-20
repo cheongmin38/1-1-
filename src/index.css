@@ -1,0 +1,82 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", "SF Pro Text", "SF Pro Display", system-ui, sans-serif;
+  --font-display: "Space Grotesk", sans-serif;
+  
+  --color-ios-blue: #007AFF;
+  --color-ios-green: #34C759;
+  --color-ios-red: #FF3B30;
+  --color-ios-orange: #FF9500;
+  --color-ios-gray: #8E8E93;
+  --color-ios-bg: #F2F2F7;
+}
+
+:root {
+  --apple-bg: #F2F2F7;
+  --apple-text: #1C1C1E;
+}
+
+body {
+  background-color: var(--apple-bg);
+  color: var(--apple-text);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+  letter-spacing: -0.022em;
+}
+
+@layer utilities {
+  .ios-glass {
+    background: rgba(255, 255, 255, 0.72);
+    backdrop-filter: blur(30px) saturate(180%);
+    -webkit-backdrop-filter: blur(30px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.35);
+  }
+  
+  .ios-card {
+    background: white;
+    border-radius: 35px;
+    padding: 24px;
+    box-shadow: 0 4px 25px rgba(0, 0, 0, 0.03);
+    border: 1px solid rgba(0, 0, 0, 0.012);
+    transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .ios-card-premium {
+     background: linear-gradient(165deg, #FFFFFF 0%, #F8F9FF 100%);
+     border-radius: 35px;
+     padding: 24px;
+     box-shadow: 0 12px 40px rgba(0, 0, 0, 0.04);
+     border: 1px solid rgba(255, 255, 255, 0.6);
+     transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .premium-blur {
+    backdrop-filter: blur(50px) saturate(200%);
+    -webkit-backdrop-filter: blur(50px) saturate(200%);
+  }
+
+  .sleek-card {
+    background: white;
+    border-radius: 28px;
+    padding: 24px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+    border: 1px solid rgba(0, 0, 0, 0.02);
+    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s ease;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .grade-midterm {
+    background: linear-gradient(135deg, #FF3B30 0%, #FF9500 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+}
