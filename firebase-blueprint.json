@@ -2,21 +2,53 @@
   "entities": {
     "Notice": {
       "title": "Class Notice",
-      "description": "Notices posted by teachers for students",
+      "description": "Notices posted by teachers or authorized students",
       "type": "object",
       "properties": {
         "content": { "type": "string", "description": "The notice text" },
-        "authorName": { "type": "string", "description": "Teacher's name" },
+        "authorName": { "type": "string", "description": "Author's name" },
         "createdAt": { "type": "string", "format": "date-time" },
-        "type": { "type": "string", "enum": ["general", "urgent"] }
+        "type": { "type": "string", "enum": ["general", "urgent", "assessment"] },
+        "attachments": { 
+          "type": "array", 
+          "items": { "type": "string", "description": "Base64 encoded file data or URLs" } 
+        }
       },
       "required": ["content", "authorName", "createdAt"]
+    },
+    "Event": {
+      "title": "Class Event",
+      "description": "Calendar events for the class",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "date": { "type": "string", "format": "date" },
+        "type": { "type": "string", "enum": ["exam", "activity", "holiday", "other"] }
+      },
+      "required": ["title", "date", "type"]
+    },
+    "AppConfig": {
+      "title": "App Configuration",
+      "description": "Global settings for the application",
+      "type": "object",
+      "properties": {
+        "authorizedStudentNumber": { "type": "string", "description": "Student number allowed to post assessment notices" }
+      }
     }
   },
   "firestore": {
     "/notices/{noticeId}": {
       "schema": "Notice",
       "description": "Collection of all class notices"
+    },
+    "/events/{eventId}": {
+      "schema": "Event",
+      "description": "Collection of calendar events"
+    },
+    "/config/permissions": {
+      "schema": "AppConfig",
+      "description": "Central permissions configuration"
     }
   }
 }

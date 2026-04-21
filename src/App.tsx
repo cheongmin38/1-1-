@@ -10,6 +10,7 @@ import LoginGate from './components/LoginGate';
 import PresidentBanner from './components/PresidentBanner';
 import MealCard from './components/MealCard';
 import TimetableCard from './components/TimetableCard';
+import PlanCalendar from './components/PlanCalendar';
 import NoticeSummarizer from './components/NoticeSummarizer';
 import DDayCard from './components/DDayCard';
 import QuickLinks from './components/QuickLinks';
@@ -188,12 +189,23 @@ export default function App() {
               )}
 
               {activeTab === 'timetable' && (
-                <div className="max-w-2xl mx-auto flex flex-col gap-6">
-                  <h2 className="text-2xl font-black tracking-tight mb-2 px-2">7교시 시간표</h2>
-                  <TimetableCard />
+                <div className="max-w-2xl mx-auto flex flex-col gap-8 pb-10">
+                  <div className="flex flex-col gap-4">
+                    <h2 className="text-2xl font-black tracking-tight px-2">오늘의 시간표</h2>
+                    <TimetableCard />
+                  </div>
+                  
+                  <div className="flex flex-col gap-4">
+                    <div className="flex items-center justify-between px-2">
+                       <h2 className="text-2xl font-black tracking-tight">학급 일정 달력</h2>
+                       <div className="text-[10px] font-black text-ios-gray bg-white px-2 py-1 rounded-lg border border-black/5 uppercase tracking-widest">Plan & Events</div>
+                    </div>
+                    <PlanCalendar />
+                  </div>
+
                   <div className="ios-card border-dashed border-2 border-[#8E8E93]/20 flex items-center gap-4 text-[#8E8E93]">
                     <div className="p-3 bg-gray-100 rounded-2xl"> <Info className="w-5 h-5" /> </div>
-                    <p className="text-xs font-medium italic">이 시간표는 1학년 1반 기준이며, 학교 사정에 따라 변동될 수 있습니다.</p>
+                    <p className="text-xs font-medium italic">이 시스템은 우리 반의 소중한 일정을 함께 관리하기 위해 제작되었습니다.</p>
                   </div>
                 </div>
               )}

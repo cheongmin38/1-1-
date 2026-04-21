@@ -11,19 +11,30 @@ service cloud.firestore {
     }
 
     function isValidNotice(data) {
-      return data.content is string && data.content.size() <= 2000
+      return data.content is string && data.content.size() <= 1048576 // Expanded for base64 images
              && data.authorName is string && data.authorName.size() <= 100
              && data.createdAt is timestamp;
     }
 
+    function isAuthorizedStudent(studentNum) {
+      return get(/databases/$(database)/documents/config/permissions).data.authorizedStudentNumber == studentNum;
+    }
+
     match /notices/{noticeId} {
-      // Everyone can read notices
       allow read: if true;
-      // Only teachers (identified by some client-side role for this simple demo) can write
-      // In a real production app, we would use auth tokens
-      allow create: if isValidNotice(request.resource.data);
-      allow delete: if true; // In this simple demo, we permit deletion via the UI
+      allow create: if isValidNotice(request.resource.data); 
+      allow delete: if true;
       allow update: if false; 
+    }
+
+    match /events/{eventId} {
+      allow read: if true;
+      allow write: if true; // Simple demo, allow management
+    }
+
+    match /config/permissions {
+      allow read: if true;
+      allow write: if true; // Teachers will update this
     }
   }
 }
