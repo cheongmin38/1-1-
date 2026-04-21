@@ -68,47 +68,48 @@ export default function App() {
       <div className="min-h-screen bg-[#F2F2F7] font-sans text-[#1C1C1E] flex flex-col pb-24">
         
         {/* iOS Style Status Header */}
-        <header className="sticky top-0 z-40 bg-[#F2F2F7]/80 backdrop-blur-xl px-6 pt-12 pb-4 flex justify-between items-center">
-          <div className="flex flex-col">
-            <span className="text-[11px] font-black tracking-widest text-[#8E8E93] uppercase mb-0.5">{todayStr}</span>
-            <div className="flex items-center gap-2">
-              <h1 className="text-3xl font-[900] tracking-tight">피드</h1>
-              <div className="w-1.5 h-1.5 bg-[#FF3B30] rounded-full mt-1 animate-pulse" />
+        <header className="sticky top-0 z-40 bg-[#F2F2F7]/90 backdrop-blur-2xl px-8 pt-16 pb-6">
+          <div className="max-w-6xl mx-auto flex justify-between items-end">
+            <div className="flex flex-col">
+              <span className="text-[12px] font-extrabold tracking-[0.14em] text-ios-gray uppercase mb-1.5">{todayStr}</span>
+              <h1 className="text-4xl sm:text-5xl font-[900] tracking-tight text-[#1C1C1E]">오늘</h1>
             </div>
-          </div>
-           <div className="flex items-center gap-3">
-             <div className="flex flex-col items-end">
-               <div className="flex items-center gap-1.5">
-                 {getRoleLabel() && (
-                   <span className="text-[10px] font-black text-ios-blue uppercase tracking-widest bg-ios-blue/5 px-1.5 py-0.5 rounded-md">
-                     {getRoleLabel()}
-                   </span>
-                 )}
-                 <span className="text-sm font-black tracking-tight">{studentName}</span>
+             <div className="flex items-center gap-4">
+               <div className="flex flex-col items-end mr-1">
+                 <div className="flex items-center gap-2">
+                   {getRoleLabel() && (
+                     <span className="text-[10px] font-black text-ios-blue bg-ios-blue/10 px-2 py-0.5 rounded-full uppercase tracking-widest">
+                       {getRoleLabel()}
+                     </span>
+                   )}
+                   <span className="text-base font-[800] tracking-tight text-[#1C1C1E]">{studentName}</span>
+                 </div>
+                 <span className="text-[11px] font-bold text-ios-gray tracking-tighter">{studentId}번 • 평택고 1-1</span>
                </div>
-               <span className="text-[11px] font-bold text-ios-gray tracking-tighter">{studentId}번</span>
-             </div>
-             <button 
-                onClick={handleLogout}
-                className="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-sm border border-black/[0.04] text-[#8E8E93] hover:text-[#FF3B30] transition-colors"
-             >
-               <LogOut className="w-4 h-4" />
-             </button>
-             <div className="w-12 h-12 rounded-[1.3rem] bg-[#1C1C1E] flex items-center justify-center shadow-lg border border-white/20">
-               <User className="w-6 h-6 text-white" />
-             </div>
+               <button 
+                  onClick={handleLogout}
+                  className="w-12 h-12 rounded-full bg-white flex items-center justify-center shadow-sm border border-black/[0.04] text-[#8E8E93] hover:text-ios-red transition-all active:scale-90"
+               >
+                 <LogOut className="w-5 h-5" />
+               </button>
+               <div className="w-[52px] h-[52px] rounded-[1.4rem] bg-gradient-to-br from-ios-blue to-purple-600 flex items-center justify-center shadow-xl shadow-ios-blue/20 p-[1px]">
+                  <div className="w-full h-full bg-[#1C1C1E] rounded-[1.35rem] flex items-center justify-center">
+                    <User className="w-6 h-6 text-white" />
+                  </div>
+               </div>
+            </div>
           </div>
         </header>
 
         {/* Dynamic Content */}
-        <main className="flex-1 px-6 pt-2">
+        <main className="flex-1 px-4 sm:px-8 pt-4 max-w-6xl mx-auto w-full">
           <AnimatePresence mode="wait">
             <motion.div
               key={activeTab}
-              initial={{ opacity: 0, y: 10, scale: 0.98 }}
+              initial={{ opacity: 0, y: 15, scale: 0.99 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -10, scale: 0.98 }}
-              transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+              exit={{ opacity: 0, y: -15, scale: 0.99 }}
+              transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
               className="h-full"
             >
               {activeTab === 'dashboard' && (
@@ -230,34 +231,34 @@ export default function App() {
         </main>
 
         {/* iOS Floating Bottom Navigation Bar */}
-        <nav className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 w-[90%] max-w-md">
-          <div className="ios-glass py-3 px-2 rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.15)] flex justify-between items-center">
+        <nav className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 w-[92%] max-w-lg">
+          <div className="apple-tab-bar py-3 px-3 rounded-[3rem] shadow-[0_25px_60px_rgba(0,0,0,0.18)] flex justify-between items-center">
             {currentTabs.map((tab) => {
                const isActive = activeTab === tab.id;
                return (
                  <button
                    key={tab.id}
                    onClick={() => setActiveTab(tab.id as TabType)}
-                   className="relative flex flex-col items-center justify-center flex-1 transition-all"
+                   className="relative flex flex-col items-center justify-center flex-1 transition-all h-[52px]"
                  >
                    <AnimatePresence>
                      {isActive && (
                        <motion.div
                          layoutId="nav-pill"
-                         className="absolute inset-0 bg-[#F2F2F7] rounded-3xl -z-10"
-                         transition={{ type: "spring", bounce: 0.25, duration: 0.5 }}
+                         className="absolute inset-x-1 inset-y-0.5 bg-ios-bg/60 rounded-full -z-10"
+                         transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
                        />
                      )}
                    </AnimatePresence>
                    <div className={cn(
-                     "p-2 rounded-2xl mb-0.5 transition-all duration-300",
+                     "p-1.5 rounded-2xl mb-0.5 transition-all duration-500",
                      isActive ? "text-ios-blue scale-110" : "text-[#8E8E93]"
                    )}>
-                     <tab.icon className={cn("w-5 h-5 transition-all", isActive && "fill-ios-blue/20")} />
+                     <tab.icon className={cn("w-6 h-6 transition-all", isActive && "fill-ios-blue/15")} />
                    </div>
                    <span className={cn(
-                     "text-[9px] font-black uppercase tracking-[0.15em] transition-all",
-                     isActive ? "text-ios-blue" : "text-[#8E8E93]"
+                     "text-[9px] font-extrabold uppercase tracking-[0.18em] transition-all duration-500",
+                     isActive ? "text-ios-blue opacity-100" : "text-[#8E8E93] opacity-60"
                    )}>
                      {tab.label}
                    </span>

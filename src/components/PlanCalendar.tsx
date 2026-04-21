@@ -102,28 +102,36 @@ export default function PlanCalendar() {
   };
 
   return (
-    <div className="ios-card flex flex-col gap-6">
+    <div className="ios-card flex flex-col gap-8 bg-white border-black/[0.01]">
       <div className="flex items-center justify-between">
         <div className="flex flex-col">
-          <h2 className="text-xl font-[900] tracking-tight text-[#1C1C1E]">학급 일정 달력</h2>
-          <span className="text-[10px] font-black text-ios-gray uppercase tracking-widest">{year}년 {month + 1}월</span>
+          <h2 className="text-2xl font-[900] tracking-tight text-[#1C1C1E]">학급 일정 달력</h2>
+          <span className="text-[11px] font-black text-ios-gray uppercase tracking-[0.14em] mt-1.5 ml-0.5 opacity-60">
+            {year}년 {month + 1}월
+          </span>
         </div>
-        <div className="flex items-center gap-2">
-          <button onClick={handlePrevMonth} className="p-2 hover:bg-ios-bg rounded-xl transition-all">
+        <div className="flex bg-ios-bg p-1.5 rounded-[1.4rem] border border-black/[0.02]">
+          <button 
+            onClick={handlePrevMonth} 
+            className="w-10 h-10 flex items-center justify-center hover:bg-white hover:shadow-sm rounded-[1rem] transition-all active:scale-90"
+          >
             <ChevronLeft className="w-5 h-5 text-ios-gray" />
           </button>
-          <button onClick={handleNextMonth} className="p-2 hover:bg-ios-bg rounded-xl transition-all">
+          <button 
+            onClick={handleNextMonth} 
+            className="w-10 h-10 flex items-center justify-center hover:bg-white hover:shadow-sm rounded-[1rem] transition-all active:scale-90"
+          >
             <ChevronRight className="w-5 h-5 text-ios-gray" />
           </button>
         </div>
       </div>
 
       {/* Calendar Grid */}
-      <div className="grid grid-cols-7 gap-1">
+      <div className="grid grid-cols-7 gap-2">
         {['일', '월', '화', '수', '목', '금', '토'].map((d, i) => (
           <div key={d} className={cn(
-            "text-[10px] font-black uppercase text-center py-2",
-            i === 0 ? "text-ios-red" : i === 6 ? "text-ios-blue" : "text-ios-gray"
+            "text-[11px] font-[900] uppercase text-center py-3 opacity-40 tracking-widest",
+            i === 0 ? "text-ios-red" : i === 6 ? "text-ios-blue" : "text-[#1C1C1E]"
           )}>
             {d}
           </div>
@@ -141,28 +149,29 @@ export default function PlanCalendar() {
               key={day}
               onClick={() => setSelectedDate(dateStr)}
               className={cn(
-                "relative group aspect-square flex flex-col items-center justify-start p-2 rounded-2xl transition-all",
-                isToday ? "bg-ios-blue/5" : "hover:bg-ios-bg",
-                isSelected ? "ring-2 ring-ios-blue ring-offset-1" : ""
+                "relative group aspect-square flex flex-col items-center justify-center p-2 rounded-[1.8rem] transition-all duration-300",
+                isToday ? "bg-ios-blue text-white shadow-xl shadow-ios-blue/30 scale-105 z-10" : "hover:bg-ios-bg",
+                isSelected && !isToday ? "bg-[#1C1C1E] text-white shadow-xl shadow-black/20 scale-105 z-10" : "",
+                !isToday && !isSelected ? "bg-ios-bg/40" : ""
               )}
             >
               <span className={cn(
-                "text-sm font-black mb-1",
-                isToday ? "text-ios-blue" : "text-[#1C1C1E]",
-                i % 7 === 0 ? "text-ios-red/70" : i % 7 === 6 ? "text-ios-blue/70" : ""
+                "text-base font-[900] transition-colors",
+                (isToday || isSelected) ? "text-white" : (i % 7 === 0 ? "text-ios-red" : i % 7 === 6 ? "text-ios-blue" : "text-[#1C1C1E]")
               )}>
                 {day}
               </span>
-              <div className="flex flex-wrap justify-center gap-0.5 mt-auto">
+              <div className="flex flex-wrap justify-center gap-1 mt-1 opacity-80">
                 {dateEvents.slice(0, 3).map((e, idx) => (
                   <div key={idx} className={cn(
-                    "w-1.5 h-1.5 rounded-full",
-                    e.type === 'exam' ? "bg-ios-red" : 
-                    e.type === 'holiday' ? "bg-ios-orange" : 
-                    e.type === 'activity' ? "bg-ios-blue" : "bg-ios-gray"
+                    "w-1 h-1 rounded-full",
+                    (isToday || isSelected) ? "bg-white" : (
+                      e.type === 'exam' ? "bg-ios-red" : 
+                      e.type === 'holiday' ? "bg-ios-orange" : 
+                      e.type === 'activity' ? "bg-ios-blue" : "bg-ios-gray"
+                    )
                   )} />
                 ))}
-                {dateEvents.length > 3 && <div className="w-1 h-1 bg-gray-300 rounded-full" />}
               </div>
             </button>
           );

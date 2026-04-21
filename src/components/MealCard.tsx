@@ -46,43 +46,42 @@ export default function MealCard() {
   return (
     <motion.div 
       whileHover={{ y: -5 }}
-      className="ios-card flex flex-col h-full min-h-[480px] bg-white border-black/[0.02]"
+      className="ios-card flex flex-col h-full min-h-[500px] bg-white border-black/[0.01]"
     >
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex justify-between items-center mb-8">
         <div className="flex flex-col">
-          <div className="flex items-center gap-2">
-            <h2 className="text-xl font-black text-[#1C1C1E] tracking-tight">오늘의 급식</h2>
+          <div className="flex items-center gap-2.5">
+            <h2 className="text-2xl font-[900] text-[#1C1C1E] tracking-tight">오늘의 급식</h2>
             <button 
               onClick={() => setShowNutrition(!showNutrition)}
               className={cn(
-                "p-1.5 rounded-xl transition-all",
-                showNutrition ? "bg-ios-blue text-white" : "bg-ios-bg text-ios-gray hover:bg-gray-200"
+                "p-2 rounded-xl transition-all active:scale-90",
+                showNutrition ? "bg-ios-blue text-white shadow-lg shadow-ios-blue/20" : "bg-ios-bg text-ios-gray hover:bg-gray-200"
               )}
-              title="영양정보 보기"
             >
-              <Info className="w-3.5 h-3.5" />
+              <Info className="w-4 h-4" />
             </button>
           </div>
-          <span className="text-[10px] font-black text-ios-gray uppercase tracking-widest leading-none mt-0.5">Dining Menu</span>
+          <span className="text-[11px] font-black text-ios-gray uppercase tracking-[0.14em] mt-1.5 ml-0.5 opacity-60">Dining Menu</span>
         </div>
-        <div className="flex bg-ios-bg p-1 rounded-2xl border border-black/[0.02]">
+        <div className="flex bg-ios-bg p-1.5 rounded-[1.6rem] border border-black/[0.02]">
           <button 
             onClick={() => setActiveType('중식')}
             className={cn(
-              "px-3 py-1.5 text-[10px] font-black rounded-[0.9rem] transition-all flex items-center gap-1.5",
-              activeType === '중식' ? "bg-white shadow-sm text-ios-blue" : "text-ios-gray"
+              "px-4 py-2 text-[11px] font-black rounded-[1.2rem] transition-all flex items-center gap-2",
+              activeType === '중식' ? "bg-white shadow-md text-ios-blue" : "text-ios-gray hover:text-black"
             )}
           >
-            <Sun className="w-3.5 h-3.5" /> 중식
+            <Sun className="w-4 h-4" /> 중식
           </button>
           <button 
             onClick={() => setActiveType('석식')}
             className={cn(
-              "px-3 py-1.5 text-[10px] font-black rounded-[0.9rem] transition-all flex items-center gap-1.5",
-              activeType === '석식' ? "bg-white shadow-sm text-ios-blue" : "text-ios-gray"
+              "px-4 py-2 text-[11px] font-black rounded-[1.2rem] transition-all flex items-center gap-2",
+              activeType === '석식' ? "bg-white shadow-md text-ios-blue" : "text-ios-gray hover:text-black"
             )}
           >
-            <Moon className="w-3.5 h-3.5" /> 석식
+            <Moon className="w-4 h-4" /> 석식
           </button>
         </div>
       </div>
