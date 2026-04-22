@@ -25,7 +25,7 @@ export async function summarizeNotice(rawText: string) {
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-flash-latest",
+      model: "gemini-1.5-flash",
       contents: prompt,
     });
 
@@ -55,7 +55,7 @@ export async function refineNotice(noticeText: string) {
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-flash-latest",
+      model: "gemini-1.5-flash",
       contents: prompt,
     });
 

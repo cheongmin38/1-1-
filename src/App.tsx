@@ -66,7 +66,9 @@ export default function App() {
     { id: 'management', label: '관리', icon: Settings },
   ] as const;
 
-  const currentTabs = studentRole === 'teacher' ? teacherTabs : tabs;
+  const currentTabs = studentRole === 'teacher' 
+    ? teacherTabs.filter(tab => tab.id !== 'planner') 
+    : tabs;
 
   return (
     <LoginGate>

@@ -76,7 +76,7 @@ export default function AIStudyPlanner() {
 
     try {
       const response = await ai.models.generateContent({
-        model: "gemini-flash-latest",
+        model: "gemini-1.5-flash",
         contents: prompt,
         config: {
           responseMimeType: "application/json",
@@ -103,7 +103,8 @@ export default function AIStudyPlanner() {
                 type: Type.ARRAY,
                 items: { type: Type.STRING }
               }
-            }
+            },
+            required: ["title", "summary", "steps", "tips"]
           }
         }
       });

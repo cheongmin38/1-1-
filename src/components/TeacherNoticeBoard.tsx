@@ -35,6 +35,7 @@ export default function TeacherNoticeBoard() {
   const storedName = localStorage.getItem('student_name');
   const studentNum = localStorage.getItem('student_id') || '';
   
+  // Explicitly check for 'teacher' role string
   const isTeacher = studentRole === 'teacher';
   const isAuthorizedStudent = studentNum === authorizedStudentNum;
   const canPost = isTeacher || isAuthorizedStudent;
@@ -107,13 +108,17 @@ export default function TeacherNoticeBoard() {
     setAttachments(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (id: string | undefined) => {
+    if (!id) return;
     if (!confirm('이 공지사항을 삭제할까요?')) return;
+    
     try {
+      console.log("Attempting to delete notice:", id);
       await deleteDoc(doc(db, 'notices', id));
-    } catch (err) {
-      console.error("Delete Error:", err);
-      alert("삭제 중 오류가 발생했습니다. 권한을 확인해주세요.");
+      // onSnapshot will automatically update the UI
+    } catch (err: any) {
+      console.error("Delete Error details:", err);
+      alert(`삭제 중 오류가 발생했습니다: ${err.message || '권한을 확인해주세요.'}`);
     }
   };
 
