@@ -18,8 +18,10 @@ import TeacherNoticeBoard from './components/TeacherNoticeBoard';
 import TeacherControlCenter from './components/TeacherControlCenter';
 import AIStudyPlanner from './components/AIStudyPlanner';
 import StudentProfile from './components/StudentProfile';
+import DailyIdiomCard from './components/DailyIdiomCard';
 import { cn } from './lib/utils';
 import { Brain, UserCircle } from 'lucide-react';
+import { getDailyContent } from './lib/dailyContent';
 
 type TabType = 'dashboard' | 'meal' | 'planner' | 'timetable' | 'notice' | 'management' | 'profile';
 
@@ -30,6 +32,8 @@ export default function App() {
   const studentId = localStorage.getItem('student_id') || '0';
   const studentName = localStorage.getItem('student_name') || '친구';
   const studentRole = localStorage.getItem('student_role') || 'student';
+
+  const { quote } = getDailyContent();
 
   const handleLogout = () => {
     localStorage.removeItem('classmate_auth');
@@ -125,33 +129,11 @@ export default function App() {
                     <MealCard />
                   </div>
 
-                  {/* Enhanced Motivation Widget */}
+                  {/* Daily Idiom Section */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                      <div className="md:col-span-1"> <DDayCard /> </div>
                      <div className="md:col-span-2"> 
-                       <div className="ios-card bg-[#1C1C1E] text-white overflow-hidden relative p-8 h-full flex flex-col justify-between">
-                         <div className="absolute top-0 right-0 p-8 opacity-10">
-                           <Trophy className="w-24 h-24" />
-                         </div>
-                         <div className="relative z-10">
-                           <div className="flex items-center gap-2 mb-4">
-                             <div className="w-1.5 h-1.5 rounded-full bg-ios-red animate-pulse" />
-                             <span className="text-[10px] font-black tracking-widest uppercase text-ios-gray">eagle spirit motivation</span>
-                           </div>
-                           <p className="text-xl md:text-2xl font-black italic leading-[1.2] text-white max-w-[90%]">
-                             "성공은 최종적인 것이 아니며, 실패는 치명적인 것이 아니다. 중요한 것은 계속해 나가는 용기다."
-                           </p>
-                         </div>
-                         <div className="mt-8 pt-6 border-t border-white/10 flex items-center justify-between">
-                           <div className="flex items-center gap-2">
-                             <Sparkles className="w-3.5 h-3.5 text-ios-orange" />
-                             <span className="text-[10px] font-bold text-ios-gray uppercase tracking-widest">Winston Churchill</span>
-                           </div>
-                           <div className="px-3 py-1 bg-white/5 rounded-full border border-white/5 text-[9px] font-black uppercase tracking-widest text-ios-blue">
-                             Keep Pushing
-                           </div>
-                         </div>
-                       </div>
+                       <DailyIdiomCard />
                      </div>
                   </div>
 

@@ -22,12 +22,22 @@ interface GeneratedPlan {
 
 export default function AIStudyPlanner() {
   const studentId = localStorage.getItem('student_id') || '0';
-  const [subject, setSubject] = useState('');
+  const [subject, setSubject] = useState('국어');
   const [currentLevel, setCurrentLevel] = useState('middle');
   const [goal, setGoal] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [plan, setPlan] = useState<GeneratedPlan | null>(null);
+
+  const subjects = ['국어', '수학', '영어', '한국사', '통합사회', '통합과학', '정보', '기타'];
+
+  const levels = [
+    { id: 'v_low', label: '기초 개념 부족', color: 'text-ios-red', sub: '용어도 생소한 입문 단계' },
+    { id: 'low', label: '개념 이해 부족', color: 'text-ios-red', sub: '기초부터 차근차근 다지기' },
+    { id: 'middle', label: '응용 문제 한계', color: 'text-ios-blue', sub: '유형별 풀이와 응용력 강화' },
+    { id: 'high', label: '고난도 정복 필요', color: 'text-ios-green', sub: '킬러 문항 집중 훈련' },
+    { id: 'perfect', label: '완벽 유지 단계', color: 'text-ios-orange', sub: '안정적인 1등급 굳히기' }
+  ];
 
   const savePlan = async () => {
     if (!plan || isSaving) return;
@@ -113,7 +123,9 @@ export default function AIStudyPlanner() {
         throw new Error("Empty response from AI");
       }
 
-      const result = JSON.parse(response.text);
+      // Gemini sometimes includes markdown code blocks
+      const cleanJson = response.text.replace(/```json/g, '').replace(/```/g, '').trim();
+      const result = JSON.parse(cleanJson);
       setPlan(result);
     } catch (error) {
       console.error("AI Generation Error:", error);
@@ -153,36 +165,46 @@ export default function AIStudyPlanner() {
               <label className="text-[11px] font-black text-ios-gray uppercase tracking-widest flex items-center gap-2">
                 <BookOpen className="w-4 h-4" /> 과목 선택
               </label>
-              <input 
-                type="text" 
-                placeholder="예: 수학, 국어, 영어 등"
-                className="w-full bg-ios-bg px-6 py-4 rounded-2xl text-sm font-black border-none focus:ring-2 focus:ring-ios-blue/20 transition-all outline-none"
-                value={subject}
-                onChange={(e) => setSubject(e.target.value)}
-              />
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {subjects.map((sub) => (
+                  <button
+                    key={sub}
+                    onClick={() => setSubject(sub)}
+                    className={cn(
+                      "py-3 rounded-xl text-xs font-black transition-all border",
+                      subject === sub 
+                        ? "bg-ios-blue text-white border-transparent shadow-md"
+                        : "bg-ios-bg text-ios-gray border-transparent hover:bg-gray-200"
+                    )}
+                  >
+                    {sub}
+                  </button>
+                ))}
+              </div>
             </div>
 
             <div className="space-y-3">
               <label className="text-[11px] font-black text-ios-gray uppercase tracking-widest flex items-center gap-2">
                 <BarChart3 className="w-4 h-4" /> 나의 현재 상태
               </label>
-              <div className="grid grid-cols-3 gap-2">
-                {[
-                  { id: 'low', label: '취약함', color: 'text-ios-red' },
-                  { id: 'middle', label: '보통', color: 'text-ios-blue' },
-                  { id: 'high', label: '자신있음', color: 'text-ios-green' }
-                ].map((level) => (
+              <div className="flex flex-col gap-2">
+                {levels.map((level) => (
                   <button
                     key={level.id}
                     onClick={() => setCurrentLevel(level.id)}
                     className={cn(
-                      "py-3 rounded-xl text-xs font-black transition-all border",
+                      "px-6 py-4 rounded-2xl text-left transition-all border flex flex-col gap-0.5",
                       currentLevel === level.id 
-                        ? cn("bg-white shadow-md border-transparent", level.color)
-                        : "bg-ios-bg text-ios-gray border-transparent hover:bg-gray-200"
+                        ? cn("bg-white shadow-lg border-ios-blue/10 ring-1 ring-ios-blue/10")
+                        : "bg-ios-bg border-transparent hover:bg-gray-200"
                     )}
                   >
-                    {level.label}
+                    <span className={cn("text-xs font-black", currentLevel === level.id ? level.color : "text-[#1C1C1E]")}>
+                      {level.label}
+                    </span>
+                    <span className="text-[10px] font-bold text-ios-gray opacity-60">
+                      {level.sub}
+                    </span>
                   </button>
                 ))}
               </div>
