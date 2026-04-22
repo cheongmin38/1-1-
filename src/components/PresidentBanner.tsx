@@ -35,43 +35,39 @@ export default function PresidentBanner({ message }: PresidentBannerProps) {
   
   return (
     <>
-      <div className="w-full flex flex-col md:flex-row items-stretch gap-4">
+      <div className="w-full grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Minimal Message Banner */}
-        <div className="flex-1 bg-white/70 backdrop-blur-2xl border border-white/50 rounded-[2.5rem] p-7 flex items-center gap-5 shadow-sm">
-          <div className="bg-ios-blue/10 text-ios-blue p-3.5 rounded-2xl shrink-0">
-            <Bell className="w-6 h-6 fill-ios-blue/10" />
+        <div className="md:col-span-2 bg-white rounded-3xl p-6 flex items-center gap-4 shadow-sm border border-black/[0.01]">
+          <div className="w-10 h-10 bg-ios-blue/5 text-ios-blue rounded-2xl flex items-center justify-center shrink-0">
+            <Bell className="w-5 h-5" />
           </div>
           <div className="flex-1">
-            <p className="text-[11px] font-[900] text-ios-gray uppercase tracking-[0.15em] mb-1">반장 한마디</p>
-            <p className="text-base font-[700] text-[#1C1C1E] leading-[1.4] tracking-tight">
+            <p className="text-[9px] font-black text-ios-gray uppercase tracking-widest mb-0.5 opacity-60">안내사항</p>
+            <p className="text-sm font-bold text-[#1C1C1E] leading-snug tracking-tight">
               {message}
             </p>
           </div>
         </div>
         
-        {/* Premium Countdown Badge */}
+        {/* High-End Countdown Badge */}
         <button 
           onClick={() => setShowDetail(true)}
-          className="ios-card-premium w-full md:w-[320px] relative overflow-hidden active:scale-[0.98] transition-all group border-black/[0.01]"
+          className="bg-[#1C1C1E] p-6 rounded-3xl shadow-lg w-full flex items-center justify-between active:scale-[0.98] transition-all group overflow-hidden relative"
         >
-          <div className="absolute top-0 right-0 p-6 opacity-5 rotate-12 translate-x-4 -translate-y-2 group-hover:rotate-0 transition-transform duration-700">
-             <Trophy className="w-24 h-24 text-black" />
+          <div className="absolute inset-0 bg-gradient-to-br from-ios-red/10 to-transparent opacity-50" />
+          <div className="relative z-10">
+            <div className="text-[9px] font-black text-ios-gray uppercase tracking-widest mb-1 flex items-center gap-1.5">
+              중간고사 <div className="w-1 h-1 bg-ios-red rounded-full animate-pulse" />
+            </div>
+            <div className="flex items-baseline gap-2">
+              <span className="text-3xl font-black text-white tracking-tighter tabular-nums">D-{timeLeft.days}</span>
+              <span className="text-[11px] font-medium text-ios-gray/80 font-mono tracking-tighter">
+                {String(timeLeft.hours).padStart(2, '0')}:{String(timeLeft.minutes).padStart(2, '0')}
+              </span>
+            </div>
           </div>
-          <div className="relative z-10 flex items-center justify-between">
-            <div className="flex flex-col items-start translate-y-[-1px]">
-              <div className="text-[10px] font-[900] text-ios-gray uppercase tracking-[0.2em] mb-1.5 flex items-center gap-2">
-                중간고사 <div className="w-1.5 h-1.5 bg-ios-red rounded-full animate-pulse" />
-              </div>
-              <div className="flex items-baseline gap-2">
-                <span className="text-4xl font-[900] text-[#1C1C1E] tracking-tighter">D-{timeLeft.days}</span>
-                <span className="text-[13px] font-mono text-ios-gray font-bold opacity-60">
-                  {String(timeLeft.hours).padStart(2, '0')}:{String(timeLeft.minutes).padStart(2, '0')}
-                </span>
-              </div>
-            </div>
-            <div className="w-14 h-14 bg-white shadow-sm rounded-2xl flex items-center justify-center border border-black/[0.03] group-hover:scale-110 transition-transform duration-500">
-               <Flame className="w-7 h-7 text-ios-red fill-ios-red/10" />
-            </div>
+          <div className="relative z-10 w-10 h-10 bg-white/5 rounded-xl flex items-center justify-center group-hover:bg-white/10 transition-colors">
+             <Flame className="w-5 h-5 text-ios-red opacity-80" />
           </div>
         </button>
       </div>

@@ -36,5 +36,15 @@ service cloud.firestore {
       allow read: if true;
       allow write: if true; // Teachers will update this
     }
+
+    match /profiles/{studentId} {
+      allow read, write: if true;
+    }
+
+    match /study_plans/{planId} {
+       allow read: if true;
+       allow create: if true;
+       allow delete: if true;
+    }
   }
 }

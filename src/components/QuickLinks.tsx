@@ -1,5 +1,6 @@
 import { motion } from 'motion/react';
 import { ExternalLink, Globe, School, BookOpen, GraduationCap } from 'lucide-react';
+import { cn } from '@/src/lib/utils';
 
 export default function QuickLinks() {
   const links = [
@@ -10,25 +11,22 @@ export default function QuickLinks() {
   ];
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8">
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
       {links.map((link, i) => (
-        <motion.a
+        <a
           key={i}
           href={link.url}
           target="_blank"
           rel="noopener noreferrer"
-          whileHover={{ y: -3, scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          className="bg-white p-6 rounded-[2.5rem] border border-gray-100 shadow-sm flex flex-col items-center justify-center gap-3 transition-all hover:shadow-md group"
+          className="ios-card p-4 flex flex-col items-center justify-center gap-2 group transition-all"
         >
-          <div className={`p-4 rounded-3xl bg-[#F5F5F7] group-hover:bg-white group-hover:scale-110 transition-all ${link.color}`}>
+          <div className={cn("p-3 rounded-2xl bg-ios-bg group-hover:bg-ios-blue/5 group-hover:text-ios-blue transition-colors", link.color)}>
             <link.icon className="w-5 h-5" />
           </div>
-          <div className="flex items-center gap-1.5 grayscale group-hover:grayscale-0 transition-all">
-            <span className="text-xs font-bold text-[#1D1D1F] tracking-tight">{link.label}</span>
-            <ExternalLink className="w-3 h-3 text-[#86868B]" />
+          <div className="flex items-center gap-1">
+            <span className="text-[10px] font-bold text-[#1C1C1E] tracking-tight">{link.label}</span>
           </div>
-        </motion.a>
+        </a>
       ))}
     </div>
   );

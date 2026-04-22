@@ -6,7 +6,7 @@ if (!apiKey) {
   console.warn("GEMINI_API_KEY is missing. AI features will not work.");
 }
 
-const ai = new GoogleGenAI({ apiKey: apiKey || "" });
+export const ai = new GoogleGenAI({ apiKey: apiKey || "" });
 
 export async function summarizeNotice(rawText: string) {
   if (!apiKey) throw new Error("API Key is missing");
@@ -25,7 +25,7 @@ export async function summarizeNotice(rawText: string) {
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-flash-latest",
       contents: prompt,
     });
 
@@ -55,7 +55,7 @@ export async function refineNotice(noticeText: string) {
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-flash-latest",
       contents: prompt,
     });
 

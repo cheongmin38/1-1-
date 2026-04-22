@@ -35,6 +35,33 @@
       "properties": {
         "authorizedStudentNumber": { "type": "string", "description": "Student number allowed to post assessment notices" }
       }
+    },
+    "StudentProfile": {
+      "title": "Student Profile",
+      "description": "Profile information for each student",
+      "type": "object",
+      "properties": {
+        "studentId": { "type": "string" },
+        "name": { "type": "string" },
+        "bio": { "type": "string" },
+        "totalPlansGenerated": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["studentId", "name"]
+    },
+    "StudyPlan": {
+      "title": "Study Plan",
+      "description": "AI generated study plans for students",
+      "type": "object",
+      "properties": {
+        "studentId": { "type": "string" },
+        "subject": { "type": "string" },
+        "goal": { "type": "string" },
+        "level": { "type": "string" },
+        "plan": { "type": "object" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["studentId", "subject", "goal", "plan", "createdAt"]
     }
   },
   "firestore": {
@@ -49,6 +76,14 @@
     "/config/permissions": {
       "schema": "AppConfig",
       "description": "Central permissions configuration"
+    },
+    "/profiles/{studentId}": {
+      "schema": "StudentProfile",
+      "description": "Student profile data"
+    },
+    "/study_plans/{planId}": {
+      "schema": "StudyPlan",
+      "description": "Saved AI study plans"
     }
   }
 }
