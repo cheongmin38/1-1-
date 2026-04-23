@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Brain, Sparkles, Loader2, ChevronRight, Target, BookOpen, BarChart3, Clock, CheckCircle2, Save, Download } from 'lucide-react';
-import { Type } from "@google/genai";
-import { ai } from '@/src/lib/gemini';
+import { Brain, Sparkles, Loader2, ChevronRight, Target, BookOpen, BarChart3, Clock, CheckCircle2, Save } from 'lucide-react';
+import { getGenAI } from '@/src/lib/gemini';
 import { cn } from '@/src/lib/utils';
 import { db } from '@/src/lib/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
@@ -32,11 +31,12 @@ export default function AIStudyPlanner() {
   const subjects = ['국어', '수학', '영어', '한국사', '통합사회', '통합과학', '정보', '기타'];
 
   const levels = [
-    { id: 'v_low', label: '기초 개념 부족', color: 'text-ios-red', sub: '용어도 생소한 입문 단계' },
-    { id: 'low', label: '개념 이해 부족', color: 'text-ios-red', sub: '기초부터 차근차근 다지기' },
-    { id: 'middle', label: '응용 문제 한계', color: 'text-ios-blue', sub: '유형별 풀이와 응용력 강화' },
-    { id: 'high', label: '고난도 정복 필요', color: 'text-ios-green', sub: '킬러 문항 집중 훈련' },
-    { id: 'perfect', label: '완벽 유지 단계', color: 'text-ios-orange', sub: '안정적인 1등급 굳히기' }
+    { id: 'v_low', label: '완전 기초 부족 (하위권)', color: 'text-ios-red', sub: '기본 개념과 용어 정리가 시급한 단계' },
+    { id: 'low', label: '개념 이해 시작 (중하위권)', color: 'text-ios-red', sub: '기본 문제는 풀지만 응용이 어려운 단계' },
+    { id: 'middle', label: '실전 응용 연습 (중위권)', color: 'text-ios-blue', sub: '개념은 알지만 문제 풀이 시간이 부족한 단계' },
+    { id: 'high', label: '심화 문제 도전 (중상위권)', color: 'text-ios-green', sub: '고난도 문항과 킬러 문항 정복이 필요한 단계' },
+    { id: 'expert', label: '최상위권 유지 (상위권)', color: 'text-ios-orange', sub: '실수 방지와 고교 심화 탐구가 필요한 단계' },
+    { id: 'exam', label: '시험 직전 최종 정리', color: 'text-ios-purple', sub: '핵심 요약과 취약점 보완이 최우선인 단계' }
   ];
 
   const savePlan = async () => {
@@ -66,70 +66,51 @@ export default function AIStudyPlanner() {
     setIsGenerating(true);
     setPlan(null);
 
+    const modelLabel = levels.find(l => l.id === currentLevel)?.label || currentLevel;
+
     const prompt = `
-      학생의 과목별 목표 달성을 위한 세세한 AI 학습 계획을 세워줘.
+      학생의 과목별 목표 달성을 위한 7일간의 세세한 AI 학습 계획을 세워줘.
       과목: ${subject}
-      현재 수준/상태: ${currentLevel}
+      현재 수준/상태: ${modelLabel}
       목표: ${goal}
 
-      다음 JSON 형식으로 응답해줘:
+      반드시 아래의 JSON 구조로만 응답해줘. 다른 설명은 필요 없어.
       {
-        "title": "계획 제목",
-        "summary": "전체 요약 및 격려 메시지",
+        "title": "7일 학습 정복 계획",
+        "summary": "핵심 요약 및 동기부여 메시지",
         "steps": [
-          { "day": "1일차", "focus": "학습 주제", "details": ["디테일1", "디테일2"] }
+          { "day": "1일차", "focus": "학습 주제", "details": ["활동1", "활동2"] }
         ],
         "tips": ["학습 팁1", "학습 팁2"]
       }
-      한글로 작성해주고, 학생에게 실질적인 도움이 되도록 매우 구체적으로 작성해줘.
+      한글로 작성하고, 7일간의 일정을 구체적으로 채워줘.
     `;
 
     try {
-      const response = await ai.models.generateContent({
+      const model = getGenAI().getGenerativeModel({ 
         model: "gemini-1.5-flash",
-        contents: prompt,
-        config: {
+        generationConfig: {
           responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              title: { type: Type.STRING },
-              summary: { type: Type.STRING },
-              steps: {
-                type: Type.ARRAY,
-                items: {
-                  type: Type.OBJECT,
-                  properties: {
-                    day: { type: Type.STRING },
-                    focus: { type: Type.STRING },
-                    details: {
-                      type: Type.ARRAY,
-                      items: { type: Type.STRING }
-                    }
-                  }
-                }
-              },
-              tips: {
-                type: Type.ARRAY,
-                items: { type: Type.STRING }
-              }
-            },
-            required: ["title", "summary", "steps", "tips"]
-          }
+          maxOutputTokens: 2000,
+          temperature: 0.7,
         }
       });
 
-      if (!response.text) {
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      const text = response.text();
+
+      if (!text) {
         throw new Error("Empty response from AI");
       }
 
-      // Gemini sometimes includes markdown code blocks
-      const cleanJson = response.text.replace(/```json/g, '').replace(/```/g, '').trim();
-      const result = JSON.parse(cleanJson);
-      setPlan(result);
-    } catch (error) {
+      // Gemini sometimes includes markdown code blocks even with responseMimeType
+      const cleanJson = text.replace(/```json/g, '').replace(/```/g, '').trim();
+      const planResult = JSON.parse(cleanJson);
+      setPlan(planResult);
+    } catch (error: any) {
       console.error("AI Generation Error:", error);
-      alert("학습 계획 생성 중 오류가 발생했습니다.");
+      alert(`학습 계획 생성 중 오류가 발생했습니다: ${error.message || '서버가 일시적으로 응답하지 않습니다.'}`);
     } finally {
       setIsGenerating(false);
     }

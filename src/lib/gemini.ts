@@ -1,15 +1,29 @@
 import { GoogleGenAI } from "@google/genai";
 
-const apiKey = process.env.GEMINI_API_KEY;
+// Use process.env.GEMINI_API_KEY which is injected by vite.config.ts
+const getApiKey = () => {
+  try {
+    return process.env.GEMINI_API_KEY || (import.meta as any).env.VITE_GEMINI_API_KEY || "";
+  } catch {
+    return (import.meta as any).env.VITE_GEMINI_API_KEY || "";
+  }
+};
 
-if (!apiKey) {
-  console.warn("GEMINI_API_KEY is missing. AI features will not work.");
-}
+let genAIInstance: GoogleGenAI | null = null;
 
-export const ai = new GoogleGenAI({ apiKey: apiKey || "" });
+export const getGenAI = () => {
+  if (!genAIInstance) {
+    const key = getApiKey();
+    if (!key) {
+      throw new Error("GEMINI_API_KEY is missing. Please set it in the environment.");
+    }
+    genAIInstance = new GoogleGenAI(key);
+  }
+  return genAIInstance;
+};
 
 export async function summarizeNotice(rawText: string) {
-  if (!apiKey) throw new Error("API Key is missing");
+  const model = getGenAI().getGenerativeModel({ model: "gemini-1.5-flash" });
 
   const prompt = `
     다음은 학급 공지사항입니다. 이를 '정보의 효율적 전달'을 목적으로 딱 3줄(혹은 4개 항목)으로 요약해주세요.
@@ -24,12 +38,9 @@ export async function summarizeNotice(rawText: string) {
   `;
 
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-1.5-flash",
-      contents: prompt,
-    });
-
-    return response.text || "요약에 실패했습니다.";
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    return response.text() || "요약에 실패했습니다.";
   } catch (error) {
     console.error("Gemini Error:", error);
     throw error;
@@ -37,7 +48,7 @@ export async function summarizeNotice(rawText: string) {
 }
 
 export async function refineNotice(noticeText: string) {
-  if (!apiKey) throw new Error("API Key is missing");
+  const model = getGenAI().getGenerativeModel({ model: "gemini-1.5-flash" });
 
   const prompt = `
     당신은 친절하고 꼼꼼한 학급 담임 선생님입니다. 
@@ -54,12 +65,9 @@ export async function refineNotice(noticeText: string) {
   `;
 
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-1.5-flash",
-      contents: prompt,
-    });
-
-    return response.text || "공지 다듬기에 실패했습니다.";
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    return response.text() || "공지 다듬기에 실패했습니다.";
   } catch (error) {
     console.error("Gemini Error:", error);
     throw error;
