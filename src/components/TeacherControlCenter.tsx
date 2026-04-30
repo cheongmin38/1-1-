@@ -11,6 +11,7 @@ interface Notice {
   content: string;
   authorName: string;
   createdAt: any;
+  viewers?: string[];
 }
 
 export default function TeacherControlCenter() {
@@ -131,9 +132,16 @@ export default function TeacherControlCenter() {
             {notices.length > 0 ? (
               notices.map((n) => (
                 <div key={n.id} className="flex items-center justify-between p-3 bg-[#F2F2F7] rounded-2xl group transition-all hover:bg-white hover:shadow-sm border border-transparent hover:border-black/[0.05]">
-                  <div className="flex flex-col gap-1 pr-4">
+                  <div className="flex flex-col gap-1 pr-4 flex-1">
                     <p className="text-sm font-bold text-[#1C1C1E] line-clamp-1">{n.content}</p>
-                    <span className="text-[10px] font-medium text-ios-gray">{n.authorName} • {n.createdAt?.toDate ? n.createdAt.toDate().toLocaleDateString() : '방금 전'}</span>
+                    <div className="flex items-center gap-2">
+                       <span className="text-[10px] font-medium text-ios-gray">{n.authorName} • {n.createdAt?.toDate ? n.createdAt.toDate().toLocaleDateString() : '방금 전'}</span>
+                       {n.viewers && n.viewers.length > 0 && (
+                         <span className="text-[9px] font-black text-ios-blue bg-ios-blue/5 px-1.5 py-0.5 rounded-md flex items-center gap-1">
+                           <ShieldCheck className="w-2.5 h-2.5" /> {n.viewers.length}명 확인함
+                         </span>
+                       )}
+                    </div>
                   </div>
                   <button 
                     onClick={() => handleDeleteNotice(n.id)}

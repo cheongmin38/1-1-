@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Lock, ArrowRight, User, Sparkles } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { STUDENT_LIST } from '@/src/constants/students';
+import { db } from '@/src/lib/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 
 interface LoginGateProps {
   children: ReactNode;
@@ -15,6 +17,8 @@ export default function LoginGate({ children }: LoginGateProps) {
   const [error, setError] = useState(false);
   const [errorMessage, setErrorMessage] = useState('번호(1-32)와 이름을 정확히 입력해줘!');
 
+  const [isCheckingAuth, setIsCheckingAuth] = useState(false);
+
   useEffect(() => {
     const saved = localStorage.getItem('classmate_auth');
     if (saved) {
@@ -22,44 +26,63 @@ export default function LoginGate({ children }: LoginGateProps) {
     }
   }, []);
 
-  const handleLogin = (e: FormEvent) => {
+  const handleLogin = async (e: FormEvent) => {
     e.preventDefault();
     const numStr = studentNumber.trim();
     const name = studentName.trim();
     
-    // 선생님 전용 로그인 (비밀번호 0000 활용)
-    if (numStr === '0000') {
-      localStorage.setItem('classmate_auth', 'true');
-      localStorage.setItem('student_id', '0');
-      localStorage.setItem('student_name', '김성연');
-      localStorage.setItem('student_role', 'teacher');
-      setIsAuthenticated(true);
-      setError(false);
-      return;
-    }
+    setIsCheckingAuth(true);
 
-    const num = parseInt(numStr);
-    
-    // 번호와 이름이 일치하는지 확인
-    if (!isNaN(num) && STUDENT_LIST[num]) {
-      const student = STUDENT_LIST[num];
-      
-      // 이름이 일치하는지 확인 (공백 제거 후 비교)
-      if (student.name === name) {
+    try {
+      // 선생님 전용 로그인 (비밀번호 활용)
+      // 먼저 Firestore에서 선생님 설정을 가져옴 (없으면 기본 0000)
+      const teacherConfigDoc = await getDoc(doc(db, 'config', 'teacher_auth'));
+      const teacherPassword = teacherConfigDoc.exists() ? teacherConfigDoc.data().password : '0000';
+
+      if (numStr === teacherPassword && name === '김성연') {
         localStorage.setItem('classmate_auth', 'true');
-        localStorage.setItem('student_id', num.toString());
-        localStorage.setItem('student_name', student.name);
-        localStorage.setItem('student_role', student.role);
-        
+        localStorage.setItem('student_id', '0');
+        localStorage.setItem('student_name', '김성연');
+        localStorage.setItem('student_role', 'teacher');
         setIsAuthenticated(true);
         setError(false);
+        return;
+      } else if (numStr === teacherPassword && name !== '김성연' && name !== '') {
+        setErrorMessage('선생님 성함을 정확히 입력해줘!');
+        setError(true);
+        setIsCheckingAuth(false);
+        return;
+      }
+
+      const num = parseInt(numStr);
+      
+      // 번호와 이름이 일치하는지 확인
+      if (!isNaN(num) && STUDENT_LIST[num]) {
+        const student = STUDENT_LIST[num];
+        
+        // 이름이 일치하는지 확인 (공백 제거 후 비교)
+        if (student.name === name) {
+          localStorage.setItem('classmate_auth', 'true');
+          localStorage.setItem('student_id', num.toString());
+          localStorage.setItem('student_name', student.name);
+          localStorage.setItem('student_role', student.role);
+          
+          setIsAuthenticated(true);
+          setError(false);
+        } else {
+          setErrorMessage('이름이 번호와 일치하지 않아. 다시 확인해줘!');
+          setError(true);
+        }
       } else {
-        setErrorMessage('이름이 번호와 일치하지 않아. 다시 확인해줘!');
+        setErrorMessage('등록된 번호가 아니거나 입력이 잘못되었어!');
         setError(true);
       }
-    } else {
-      setErrorMessage('등록된 번호가 아니거나 입력이 잘못되었어!');
+    } catch (err) {
+      console.error("Login verification error:", err);
+      setErrorMessage("로그인 처리 중 오류가 발생했습니다.");
       setError(true);
+    } finally {
+      setIsCheckingAuth(false);
     }
   };
 
@@ -105,40 +128,25 @@ export default function LoginGate({ children }: LoginGateProps) {
             </div>
             
             <AnimatePresence mode="wait">
-              {studentNumber !== '0000' ? (
                 <motion.input
                   key="name-input"
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
                   type="text"
                   value={studentName}
                   onChange={(e) => setStudentName(e.target.value)}
-                  placeholder="이름을 입력해줘"
+                  placeholder={studentNumber === '0000' ? "성함을 입력해줘 (김성연)" : "이름을 입력해줘"}
                   className={cn(
                     "w-full px-8 py-5 bg-white rounded-[1.5rem] border-transparent transition-all outline-none text-lg font-black placeholder:text-gray-200 shadow-sm",
                     error && studentName.trim().length === 0 ? "ring-4 ring-ios-red/20 bg-ios-red/5" : "focus:ring-4 focus:ring-ios-blue/10 bg-white"
                   )}
                 />
-              ) : (
-                <motion.div
-                  key="teacher-reveal"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  className="w-full px-8 py-5 bg-ios-blue/5 rounded-[1.5rem] border border-ios-blue/10 flex items-center justify-between"
-                >
-                  <span className="text-ios-blue font-black tracking-tight">반갑습니다, 김성연 선생님!</span>
-                  <Sparkles className="w-4 h-4 text-ios-blue" />
-                </motion.div>
-              )}
             </AnimatePresence>
 
             <button
               type="submit"
-              className="w-full py-5 mt-2 bg-ios-blue text-white rounded-[1.5rem] flex items-center justify-center gap-2 font-black uppercase tracking-widest hover:opacity-90 active:scale-95 transition-all shadow-lg shadow-ios-blue/20"
+              disabled={isCheckingAuth}
+              className="w-full py-5 mt-2 bg-ios-blue text-white rounded-[1.5rem] flex items-center justify-center gap-2 font-black uppercase tracking-widest hover:opacity-90 active:scale-95 disabled:opacity-50 transition-all shadow-lg shadow-ios-blue/20"
             >
-              입장하기 <ArrowRight className="w-5 h-5" />
+              {isCheckingAuth ? '확인 중...' : '입장하기'} <ArrowRight className="w-5 h-5" />
             </button>
           </div>
           <AnimatePresence>

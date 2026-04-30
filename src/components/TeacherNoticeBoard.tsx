@@ -21,6 +21,7 @@ interface Notice {
   createdAt: any;
   type?: 'general' | 'urgent' | 'assessment';
   attachments?: string[];
+  viewers?: string[];
 }
 
 export default function TeacherNoticeBoard() {
@@ -283,6 +284,19 @@ export default function TeacherNoticeBoard() {
                 <p className="text-sm font-bold leading-relaxed text-[#1C1C1E] whitespace-pre-wrap">
                   {notice.content}
                 </p>
+
+                {isTeacher && notice.viewers && notice.viewers.length > 0 && (
+                  <div className="mt-2 py-2 px-3 bg-ios-blue/5 rounded-xl border border-ios-blue/10">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[10px] font-black text-ios-blue uppercase tracking-tight flex items-center gap-1">
+                        <Sparkles className="w-3 h-3" /> 확인한 학생 ({notice.viewers.length}명)
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-ios-gray font-bold leading-tight">
+                      {notice.viewers.join(', ')}
+                    </p>
+                  </div>
+                )}
 
                 {notice.attachments && notice.attachments.length > 0 && (
                   <div className="flex flex-wrap gap-2 pt-2">

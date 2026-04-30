@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Bell, Calendar, ChevronLeft, ChevronRight, Clock, Megaphone, Info, AlertTriangle } from 'lucide-react';
 import { db } from '@/src/lib/firebase';
-import { collection, query, orderBy, onSnapshot, where, Timestamp } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, where, Timestamp, doc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { cn } from '@/src/lib/utils';
 
 interface Notice {
@@ -11,12 +11,15 @@ interface Notice {
   authorName: string;
   createdAt: any;
   type: 'general' | 'urgent' | 'assessment';
+  viewers?: string[];
 }
 
 export default function DashboardNotices() {
   const [notices, setNotices] = useState<Notice[]>([]);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
+  const studentName = localStorage.getItem('student_name') || '익명';
+  const studentRole = localStorage.getItem('student_role') || 'student';
 
   useEffect(() => {
     const q = query(collection(db, 'notices'), orderBy('createdAt', 'desc'));
@@ -40,6 +43,19 @@ export default function DashboardNotices() {
   };
 
   const currentNotices = getNoticesByDate(selectedDate);
+
+  // Mark notices as read when they appear in the current view
+  useEffect(() => {
+    if (studentRole === 'teacher') return; // Don't track teacher views
+    
+    currentNotices.forEach(notice => {
+      if (!notice.viewers?.includes(studentName)) {
+        updateDoc(doc(db, 'notices', notice.id), {
+          viewers: arrayUnion(studentName)
+        }).catch(err => console.error("Notice read track error:", err));
+      }
+    });
+  }, [selectedDate, notices.length]);
 
   const changeDate = (days: number) => {
     const next = new Date(selectedDate);

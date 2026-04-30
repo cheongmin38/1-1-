@@ -19,7 +19,11 @@ export default function StudentProfile() {
   const studentRole = localStorage.getItem('student_role') || 'student';
 
   const [personalGoal, setPersonalGoal] = useState('');
+  const [profileName, setProfileName] = useState(studentName);
+  const [teacherPassword, setTeacherPassword] = useState('0000');
   const [isEditingGoal, setIsEditingGoal] = useState(false);
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [isEditingPassword, setIsEditingPassword] = useState(false);
   const [savedPlans, setSavedPlans] = useState<StudyPlan[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [expandedPlanId, setExpandedPlanId] = useState<string | null>(null);
@@ -32,6 +36,20 @@ export default function StudentProfile() {
         setPersonalGoal(doc.data().personalGoal || '');
       }
     });
+
+    // Load teacher auth code if teacher
+    if (studentRole === 'teacher') {
+      const authRef = doc(db, 'config', 'teacher_auth');
+      const unsubscribeAuth = onSnapshot(authRef, (doc) => {
+        if (doc.exists()) {
+          setTeacherPassword(doc.data().password || '0000');
+        }
+      });
+      return () => {
+        unsubscribeProfile();
+        unsubscribeAuth();
+      };
+    }
 
     // Load saved plans
     const q = query(
@@ -53,6 +71,40 @@ export default function StudentProfile() {
       unsubscribePlans();
     };
   }, [studentId]);
+
+  const handleUpdatePassword = async () => {
+    if (teacherPassword.length < 4) {
+      alert('비밀번호는 4자리 이상이어야 해!');
+      return;
+    }
+    try {
+      await setDoc(doc(db, 'config', 'teacher_auth'), {
+        password: teacherPassword,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+      setIsEditingPassword(false);
+      alert('비밀번호가 성공적으로 변경되었습니다. 다음 로그인부터는 새 비밀번호를 사용해주세요!');
+    } catch (err) {
+      console.error(err);
+      alert('비밀번호 저장 중 오류가 발생했습니다.');
+    }
+  };
+
+  const handleUpdateProfile = async () => {
+    try {
+      await setDoc(doc(db, 'profiles', studentId), {
+        studentId,
+        name: profileName,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+      localStorage.setItem('student_name', profileName);
+      setIsEditingProfile(false);
+      // Optional: window.location.reload() to sync other components if needed
+    } catch (err) {
+      console.error(err);
+      alert('프로필 저장 중 오류가 발생했습니다.');
+    }
+  };
 
   const handleUpdateGoal = async () => {
     try {
@@ -109,7 +161,63 @@ export default function StudentProfile() {
         </div>
         <div className="flex-1 text-center sm:text-left">
           <div className="flex items-center justify-center sm:justify-start gap-3 mb-2">
-            <h2 className="text-3xl font-[900] tracking-tight text-[#1C1C1E]">{studentName}</h2>
+            {isEditingProfile && studentRole !== 'teacher' ? (
+              <div className="flex items-center gap-2">
+                <input 
+                  value={profileName}
+                  onChange={(e) => setProfileName(e.target.value)}
+                  className="text-2xl font-[900] tracking-tight text-[#1C1C1E] bg-[#F2F2F7] rounded-xl px-3 py-1 outline-none focus:ring-2 focus:ring-ios-blue/20"
+                  autoFocus
+                />
+                <button 
+                  onClick={handleUpdateProfile}
+                  className="p-2 bg-ios-blue text-white rounded-xl active:scale-95 transition-all"
+                >
+                  <Sparkles className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <>
+                <h2 className="text-3xl font-[900] tracking-tight text-[#1C1C1E]">{profileName}</h2>
+                {studentRole === 'teacher' ? (
+                   <div className="flex items-center gap-2">
+                     <span className="text-[10px] font-black text-ios-blue bg-ios-blue/5 px-2 py-1 rounded-lg">관리자 권한</span>
+                     {isEditingPassword ? (
+                       <div className="flex items-center gap-2 bg-ios-orange/5 p-1 rounded-xl border border-ios-orange/10">
+                          <input 
+                            type="text"
+                            value={teacherPassword}
+                            onChange={(e) => setTeacherPassword(e.target.value)}
+                            placeholder="새 비밀번호"
+                            className="text-sm font-black text-ios-orange bg-white rounded-lg px-2 py-1 outline-none w-24"
+                            autoFocus
+                          />
+                          <button onClick={handleUpdatePassword} className="p-1 bg-ios-orange text-white rounded-lg active:scale-90">
+                            <Sparkles className="w-3 h-3" />
+                          </button>
+                          <button onClick={() => setIsEditingPassword(false)} className="p-1 text-ios-gray hover:text-black">
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                       </div>
+                     ) : (
+                       <button 
+                         onClick={() => setIsEditingPassword(true)}
+                         className="flex items-center gap-1.5 px-3 py-1 bg-[#1C1C1E] text-white text-[10px] font-black rounded-lg hover:opacity-90 active:scale-95 transition-all"
+                       >
+                         <Lock className="w-3 h-3" /> 비밀번호 변경
+                       </button>
+                     )}
+                   </div>
+                ) : (
+                  <button 
+                    onClick={() => setIsEditingProfile(true)}
+                    className="p-1 text-ios-gray hover:text-ios-blue transition-colors"
+                  >
+                    <Settings className="w-4 h-4" />
+                  </button>
+                )}
+              </>
+            )}
             <span className="px-3 py-1 bg-ios-blue/10 text-ios-blue text-[10px] font-black rounded-full uppercase tracking-widest leading-none translate-y-[1px]">
                {studentRole === 'teacher' ? '선생님' : `${studentId}번 학생`}
             </span>

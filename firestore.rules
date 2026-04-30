@@ -67,7 +67,8 @@ service cloud.firestore {
 
     // Config
     match /config/{docId} {
-      allow read, write: if true;
+      allow read: if true;
+      allow write: if true; // In production, this should be restricted to the teacher profile
     }
 
     // Catch-all

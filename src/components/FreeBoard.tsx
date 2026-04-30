@@ -24,6 +24,7 @@ interface Comment {
   content: string;
   isAnonymous: boolean;
   createdAt: any;
+  likes?: number;
 }
 
 const CATEGORIES = [
@@ -115,6 +116,16 @@ export default function FreeBoard() {
     }
   };
 
+  const handleCommentLike = async (postId: string, commentId: string) => {
+    if ("vibrate" in navigator) navigator.vibrate(50);
+    try {
+      await updateDoc(doc(db, `free_board/${postId}/comments`, commentId), {
+        likes: increment(1)
+      });
+    } catch (error) {
+      console.error("Error liking comment:", error);
+    }
+  };
   const handleCommentSubmit = async (postId: string, postAuthorId: string, postContent: string) => {
     const text = commentInputs[postId]?.trim();
     if (!text) return;
@@ -309,13 +320,13 @@ export default function FreeBoard() {
                 <div className="flex items-center gap-4">
                   <button 
                     onClick={() => handleLike(post)}
-                    className="flex items-center gap-1.5 text-ios-gray hover:text-ios-pink transition-all active:scale-125 group/like"
+                    className="flex items-center gap-1.5 text-ios-gray hover:text-ios-red transition-all active:scale-125 group/like"
                   >
                     <Heart className={cn(
                       "w-4 h-4 transition-all", 
-                      post.likes > 0 ? "fill-ios-pink text-ios-pink" : "group-hover/like:text-ios-pink"
+                      post.likes > 0 ? "fill-ios-red text-ios-red" : "group-hover/like:text-ios-red"
                     )} />
-                    <span className={cn("text-xs font-black", post.likes > 0 && "text-ios-pink")}>{post.likes}</span>
+                    <span className={cn("text-xs font-black", post.likes > 0 && "text-ios-red")}>{post.likes}</span>
                   </button>
 
                   <button 
@@ -358,11 +369,20 @@ export default function FreeBoard() {
                               <User className="w-3.5 h-3.5" />
                             </div>
                             <div className="flex-1 bg-[#F2F2F7]/50 rounded-2xl p-2.5">
-                              <div className="flex justify-between items-center mb-0.5">
-                                <span className="text-[11px] font-black">{c.isAnonymous ? '익명' : c.authorName}</span>
-                                <span className="text-[9px] text-ios-gray font-bold">
-                                  {c.createdAt?.toDate ? new Date(c.createdAt.toDate()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
-                                </span>
+                              <div className="flex justify-between items-start mb-0.5">
+                                <div className="flex flex-col">
+                                  <span className="text-[11px] font-black">{c.isAnonymous ? '익명' : c.authorName}</span>
+                                  <span className="text-[9px] text-ios-gray font-bold">
+                                    {c.createdAt?.toDate ? new Date(c.createdAt.toDate()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                                  </span>
+                                </div>
+                                <button 
+                                  onClick={() => handleCommentLike(post.id, c.id)}
+                                  className="flex items-center gap-1 text-ios-gray hover:text-ios-red transition-all active:scale-150"
+                                >
+                                  <Heart className={cn("w-3 h-3", (c.likes || 0) > 0 ? "fill-ios-red text-ios-red" : "")} />
+                                  <span className={cn("text-[10px] font-black", (c.likes || 0) > 0 && "text-ios-red")}>{c.likes || 0}</span>
+                                </button>
                               </div>
                               <p className="text-[13px] text-[#1C1C1E] font-medium leading-relaxed">{c.content}</p>
                             </div>

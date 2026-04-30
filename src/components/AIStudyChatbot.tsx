@@ -123,41 +123,47 @@ export default function AIStudyChatbot() {
     };
 
     const updatedMessages = [...messages, userMessage];
+    
+    // Save initial state to state
     setMessages(updatedMessages);
     setInput('');
     setIsLoading(true);
 
-    try {
-      const ai = getGenAI();
-      
-      const history = messages.map(m => ({
-        role: m.role === 'user' ? 'user' : 'model',
-        parts: [{ text: m.content }],
-      }));
+      // We save the session after getting the response, 
+      // but let's also save the user message immediately to ensure it's recorded
+      await saveChatSession(updatedMessages, persona);
 
-      const chat = ai.chats.create({ 
-        model: "gemini-3-flash-preview",
-        config: {
-          systemInstruction: `당신은 ${studentName} 학생을 위한 똑똑한 AI 공부 챗봇 '클래스메이트 AI'입니다.
-            현재 당신의 성격 유형은 '${PERSONAS[persona].title}'입니다.
-            
-            [유형별 지침]
-            ${PERSONAS[persona].instruction}
-            
-            [공통 지침]
-            1. 학생이 학습 계획을 요청하면 반드시 다음 마크다운 형식을 포함해주세요:
-               ### [계획 제목]
-               (계획 내용 설명...)
-               이후 하단에 학생이 저장할 수 있도록 "✨ 이 계획이 마음에 드시나요? 저장 버튼을 눌러보세요!" 라고 안내하세요.
-            2. 단순한 답변보다는 학생이 실천할 수 있는 구체적인 행동 요령을 제시하세요.
-            3. 한국어로 자연스럽게 답변하세요.`,
-          history: history as any
-        }
-      });
+      try {
+        const ai = getGenAI();
+        
+        // Format history for Gemini SDK
+        const history = messages.map(m => ({
+          role: m.role === 'user' ? 'user' : 'model',
+          parts: [{ text: m.content }],
+        }));
 
-      const response = await chat.sendMessageStream({
-        message: userMessage.content
-      });
+        const result = await ai.models.generateContentStream({ 
+          model: "gemini-3-flash-preview",
+          contents: [
+            ...history,
+            { role: 'user', parts: [{ text: userMessage.content }] }
+          ],
+          config: {
+            systemInstruction: `당신은 ${studentName} 학생을 위한 똑똑한 AI 공부 챗봇 '클래스메이트 AI'입니다.
+              현재 당신의 성격 유형은 '${PERSONAS[persona].title}'입니다.
+              
+              [유형별 지침]
+              ${PERSONAS[persona].instruction}
+              
+              [공통 지침]
+              1. 학생이 학습 계획을 요청하면 반드시 다음 마크다운 형식을 포함해주세요:
+                 ### [계획 제목]
+                 (계획 내용 설명...)
+                 이후 하단에 학생이 저장할 수 있도록 "✨ 이 계획이 마음에 드시나요? 저장 버튼을 눌러보세요!" 라고 안내하세요.
+              2. 단순한 답변보다는 학생이 실천할 수 있는 구체적인 행동 요령을 제시하세요.
+              3. 한국어로 자연스럽게 답변하세요.`,
+          }
+        });
       
       let fullText = "";
       
@@ -170,8 +176,8 @@ export default function AIStudyChatbot() {
       
       setMessages(prev => [...prev, initialAssistantMessage]);
 
-      for await (const chunk of response) {
-        const chunkText = (chunk as any).text || "";
+      for await (const chunk of result) {
+        const chunkText = chunk.text;
         fullText += chunkText;
         
         setMessages(prev => {
