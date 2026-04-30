@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Bot, Send, User, Loader2, Sparkles, Brain, Save, Trash2, History, ChevronRight, MessageSquare, BookOpen, GraduationCap } from 'lucide-react';
+import { Bot, Send, User, Loader2, Sparkles, Brain, Save, Trash2, History, ChevronRight, MessageSquare, BookOpen, GraduationCap, Flame, Target, Wand2 } from 'lucide-react';
 import { db } from '@/src/lib/firebase';
 import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, deleteDoc, doc, limit, setDoc } from 'firebase/firestore';
 import { cn } from '@/src/lib/utils';
@@ -46,7 +46,6 @@ const PERSONAS: Record<PersonaType, { title: string; desc: string; icon: any; co
 };
 
 import { getGenAI } from '@/src/lib/gemini';
-import { Flame, Target, Wand2 } from 'lucide-react';
 
 export default function AIStudyChatbot() {
   const [messages, setMessages] = useState<Message[]>([]);

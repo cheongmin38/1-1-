@@ -1,7 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
 
 // Initialize the Gemini AI client
-// Note: process.env.GEMINI_API_KEY is provided by the platform.
+// Note: process.env.GEMINI_API_KEY is provided via vite.config.ts define.
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 export const getGenAI = () => ai;

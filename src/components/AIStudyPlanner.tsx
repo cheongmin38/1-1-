@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Brain, Sparkles, Loader2, ChevronRight, Target, BookOpen, BarChart3, Clock, CheckCircle2, Save } from 'lucide-react';
-import { getGenAI } from '@/src/lib/gemini';
 import { cn } from '@/src/lib/utils';
 import { db } from '@/src/lib/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
@@ -18,6 +17,7 @@ interface GeneratedPlan {
   steps: StudyPlanStep[];
   tips: string[];
 }
+import { getGenAI } from '@/src/lib/gemini';
 
 export default function AIStudyPlanner() {
   const studentId = localStorage.getItem('student_id') || '0';
