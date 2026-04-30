@@ -37,13 +37,42 @@ export default function PlanCalendar() {
   const isTeacher = studentRole === 'teacher';
 
   useEffect(() => {
+    // Academic events pre-population
+    const preEvents: Partial<Event>[] = [
+      { title: '1학기 1차 지필평가 (중간)', type: 'exam', date: '2026-04-27' },
+      { title: '1학기 1차 지필평가 (중간)', type: 'exam', date: '2026-04-28' },
+      { title: '1학기 1차 지필평가 (중간)', type: 'exam', date: '2026-04-29' },
+      { title: '1학기 1차 지필평가 (중간)', type: 'exam', date: '2026-04-30' },
+      { title: '스승의 날', type: 'activity', date: '2026-05-15' },
+      { title: '학급 체육대회', type: 'activity', date: '2026-05-18' },
+      { title: '현장체험학습', type: 'activity', date: '2026-05-22' },
+      { title: '1학기 2차 지필평가 (기말)', type: 'exam', date: '2026-06-29' },
+      { title: '1학기 2차 지필평가 (기말)', type: 'exam', date: '2026-06-30' },
+      { title: '1학기 2차 지필평가 (기말)', type: 'exam', date: '2026-07-01' },
+      { title: '1학기 2차 지필평가 (기말)', type: 'exam', date: '2026-07-02' },
+      { title: '여름방학식', type: 'holiday', date: '2026-07-17' },
+      { title: '개학식', type: 'holiday', date: '2026-08-17' },
+      { title: '2학기 1차 지필평가 (중간)', type: 'exam', date: '2026-10-12' },
+      { title: '2학기 2차 지필평가 (기말)', type: 'exam', date: '2026-12-14' },
+      { title: '겨울방학식', type: 'holiday', date: '2026-12-30' },
+    ];
+
     const q = query(collection(db, 'events'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const data = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       })) as Event[];
-      setEvents(data);
+      
+      // Merge with pre-populated events if they don't exist in DB
+      const merged = [...data];
+      preEvents.forEach(pe => {
+        if (!merged.find(me => me.title === pe.title && me.date === pe.date)) {
+          merged.push({ id: `pre-${pe.date}-${pe.title}`, ...pe } as Event);
+        }
+      });
+      
+      setEvents(merged);
     });
     return () => unsubscribe();
   }, []);

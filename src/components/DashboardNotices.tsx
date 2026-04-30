@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Bell, Calendar, ChevronLeft, ChevronRight, Clock, Megaphone, Info, AlertTriangle } from 'lucide-react';
+import { Bell, Calendar, ChevronLeft, ChevronRight, Clock, Megaphone, Info, AlertTriangle, File, ImageIcon } from 'lucide-react';
 import { db } from '@/src/lib/firebase';
 import { collection, query, orderBy, onSnapshot, where, Timestamp, doc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { cn } from '@/src/lib/utils';
+import ImageModal from './ImageModal';
 
 interface Notice {
   id: string;
@@ -11,6 +12,7 @@ interface Notice {
   authorName: string;
   createdAt: any;
   type: 'general' | 'urgent' | 'assessment';
+  attachments?: string[];
   viewers?: string[];
 }
 
@@ -18,6 +20,7 @@ export default function DashboardNotices() {
   const [notices, setNotices] = useState<Notice[]>([]);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
   const studentName = localStorage.getItem('student_name') || '익명';
   const studentRole = localStorage.getItem('student_role') || 'student';
 
@@ -46,7 +49,7 @@ export default function DashboardNotices() {
 
   // Mark notices as read when they appear in the current view
   useEffect(() => {
-    if (studentRole === 'teacher') return; // Don't track teacher views
+    if (studentRole === 'teacher' || studentName === '익명') return; // Don't track teacher or logged-out views
     
     currentNotices.forEach(notice => {
       if (!notice.viewers?.includes(studentName)) {
@@ -127,7 +130,7 @@ export default function DashboardNotices() {
                         notice.type === 'assessment' ? "text-ios-blue" :
                         "text-ios-gray"
                       )}>
-                        {notice.type === 'urgent' ? '긴급' : notice.type === 'assessment' ? '평가' : '일반'}
+                        {notice.type === 'urgent' ? '긴급' : notice.type === 'assessment' ? '수행' : '일반'}
                       </span>
                     </div>
                     <span className="text-[10px] font-bold text-ios-gray">
@@ -137,9 +140,33 @@ export default function DashboardNotices() {
                   <p className="text-[14px] font-medium text-[#1C1C1E] whitespace-pre-wrap leading-relaxed">
                     {notice.content}
                   </p>
-                  <div className="mt-3 pt-2 border-t border-black/[0.05] flex items-center justify-end">
+
+                  {notice.attachments && notice.attachments.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-3">
+                      {notice.attachments.map((file, i) => (
+                        <button 
+                          key={i} 
+                          onClick={() => file.startsWith('data:image') && setPreviewImage(file)}
+                          className="w-20 h-20 rounded-xl overflow-hidden border border-black/5 bg-white shadow-sm active:scale-95 transition-all flex items-center justify-center shrink-0"
+                        >
+                          {file.startsWith('data:image') ? (
+                            <img src={file} className="w-full h-full object-cover" />
+                          ) : (
+                            <File className="w-5 h-5 text-ios-blue" />
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="mt-3 pt-2 border-t border-black/[0.05] flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      {notice.viewers?.includes(studentName) && (
+                        <span className="text-[9px] font-black text-ios-blue bg-ios-blue/5 px-1.5 py-0.5 rounded">읽음</span>
+                      )}
+                    </div>
                     <span className="text-[11px] font-black text-ios-gray flex items-center gap-1.5">
-                      <Clock className="w-3 h-3" /> {notice.authorName} 선생님
+                      <Clock className="w-3 h-3" /> {notice.authorName}
                     </span>
                   </div>
                 </div>
@@ -159,9 +186,7 @@ export default function DashboardNotices() {
         </AnimatePresence>
       </div>
 
-      <button className="w-full mt-4 py-3 bg-[#F2F2F7] hover:bg-[#E5E5EA] rounded-xl text-[11px] font-black text-ios-gray uppercase tracking-widest transition-all">
-        전체 공지 내역 보기
-      </button>
+      <ImageModal src={previewImage} onClose={() => setPreviewImage(null)} />
     </div>
   );
 }

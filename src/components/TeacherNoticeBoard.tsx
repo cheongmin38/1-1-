@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Send, Megaphone, Trash2, Clock, User, Sparkles, Loader2, Paperclip, X, Image as ImageIcon, File } from 'lucide-react';
+import { Send, Megaphone, Trash2, Clock, User, Sparkles, Loader2, Paperclip, X, Image as ImageIcon, File, Eye, EyeOff } from 'lucide-react';
 import { db } from '@/src/lib/firebase';
 import { cn } from '@/src/lib/utils';
+import { STUDENT_LIST } from '@/src/constants/students';
+import ImageModal from './ImageModal';
 import { 
   collection, 
   addDoc, 
@@ -31,6 +33,8 @@ export default function TeacherNoticeBoard() {
   const [attachments, setAttachments] = useState<string[]>([]);
   const [authorizedStudentNum, setAuthorizedStudentNum] = useState('');
   const [noticeType, setNoticeType] = useState<'general' | 'assessment'>('general');
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [showWhoSaw, setShowWhoSaw] = useState<string | null>(null);
   
   const studentRole = localStorage.getItem('student_role');
   const storedName = localStorage.getItem('student_name');
@@ -285,23 +289,55 @@ export default function TeacherNoticeBoard() {
                   {notice.content}
                 </p>
 
-                {isTeacher && notice.viewers && notice.viewers.length > 0 && (
-                  <div className="mt-2 py-2 px-3 bg-ios-blue/5 rounded-xl border border-ios-blue/10">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-[10px] font-black text-ios-blue uppercase tracking-tight flex items-center gap-1">
-                        <Sparkles className="w-3 h-3" /> 확인한 학생 ({notice.viewers.length}명)
-                      </span>
-                    </div>
-                    <p className="text-[10px] text-ios-gray font-bold leading-tight">
-                      {notice.viewers.join(', ')}
-                    </p>
+                {isTeacher && (
+                  <div className="mt-4">
+                    <button 
+                      onClick={() => setShowWhoSaw(showWhoSaw === notice.id ? null : notice.id)}
+                      className="flex items-center gap-1.5 px-3 py-2 bg-ios-bg rounded-xl text-[10px] font-black text-ios-gray hover:bg-ios-gray/10 mb-2"
+                    >
+                      {showWhoSaw === notice.id ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                      수신 확인 상세 정보
+                    </button>
+                    
+                    <AnimatePresence>
+                      {showWhoSaw === notice.id && (
+                        <motion.div 
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: 'auto', opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          className="overflow-hidden"
+                        >
+                          <div className="p-3 bg-white rounded-2xl border border-black/5 space-y-3">
+                            <div>
+                              <p className="text-[10px] font-black text-ios-blue mb-1 uppercase tracking-tighter">확인한 학생 ({notice.viewers?.length || 0}명)</p>
+                              <p className="text-[10px] text-ios-gray font-bold">
+                                {notice.viewers && notice.viewers.length > 0 ? notice.viewers.join(', ') : '아직 아무도 확인하지 않았습니다.'}
+                              </p>
+                            </div>
+                            <div className="pt-2 border-t border-black/[0.03]">
+                              <p className="text-[10px] font-black text-ios-red mb-1 uppercase tracking-tighter">아직 확인하지 않은 학생 ({Object.values(STUDENT_LIST).filter(s => s.role !== 'teacher' && !notice.viewers?.includes(s.name)).length}명)</p>
+                              <p className="text-[10px] text-ios-gray font-bold line-clamp-3">
+                                {Object.values(STUDENT_LIST)
+                                  .filter(s => s.role !== 'teacher' && !notice.viewers?.includes(s.name))
+                                  .map(s => s.name)
+                                  .join(', ')}
+                              </p>
+                            </div>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
                 )}
 
                 {notice.attachments && notice.attachments.length > 0 && (
                   <div className="flex flex-wrap gap-2 pt-2">
                     {notice.attachments.map((file, i) => (
-                      <div key={i} className="max-w-[200px] max-h-[200px] rounded-2xl overflow-hidden border border-black/5 shadow-sm">
+                      <button 
+                        key={i} 
+                        onClick={() => file.startsWith('data:image') && setPreviewImage(file)}
+                        className="max-w-[200px] max-h-[200px] rounded-2xl overflow-hidden border border-black/5 shadow-sm active:scale-95 transition-all text-left"
+                      >
                          {file.startsWith('data:image') ? (
                            <img src={file} className="w-full h-full object-contain bg-white" />
                          ) : (
@@ -310,7 +346,7 @@ export default function TeacherNoticeBoard() {
                              <span className="text-[10px] font-bold truncate">첨부 파일</span>
                            </div>
                          )}
-                      </div>
+                      </button>
                     ))}
                   </div>
                 )}
@@ -328,6 +364,8 @@ export default function TeacherNoticeBoard() {
           )}
         </AnimatePresence>
       </div>
+
+      <ImageModal src={previewImage} onClose={() => setPreviewImage(null)} />
     </div>
   );
 }
