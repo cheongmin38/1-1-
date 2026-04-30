@@ -21,15 +21,29 @@ export default function DashboardNotices() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [showAll, setShowAll] = useState(false);
   const studentName = localStorage.getItem('student_name') || '익명';
   const studentId = localStorage.getItem('student_id') || '';
   const studentRole = localStorage.getItem('student_role') || 'student';
+  const isTeacher = studentRole === 'teacher' || studentId === '0' || studentName === '김성연';
 
   useEffect(() => {
-    const q = query(collection(db, 'notices'), orderBy('createdAt', 'desc'));
+    // Note: Removed orderBy from query to ensure notices with missing createdAt aren't filtered out by Firestore
+    const q = query(collection(db, 'notices'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Notice[];
-      setNotices(data);
+      // Sort client-side with robust timestamp handling
+      const sorted = [...data].sort((a, b) => {
+        const getTime = (notice: Notice) => {
+          if (!notice.createdAt) return 0;
+          if (notice.createdAt.toMillis) return notice.createdAt.toMillis();
+          if (notice.createdAt.seconds) return notice.createdAt.seconds * 1000;
+          if (notice.createdAt instanceof Date) return notice.createdAt.getTime();
+          return 0;
+        };
+        return getTime(b) - getTime(a);
+      });
+      setNotices(sorted);
     });
     return () => unsubscribe();
   }, []);
@@ -41,12 +55,17 @@ export default function DashboardNotices() {
   const getNoticesByDate = (date: Date) => {
     const target = formatDate(date);
     return notices.filter(n => {
-      if (!n.createdAt?.toDate) return false;
-      return formatDate(n.createdAt.toDate()) === target;
+      let noticeDate: Date | null = null;
+      if (n.createdAt?.toDate) noticeDate = n.createdAt.toDate();
+      else if (n.createdAt?.seconds) noticeDate = new Date(n.createdAt.seconds * 1000);
+      else if (n.createdAt instanceof Date) noticeDate = n.createdAt;
+      
+      if (!noticeDate) return false;
+      return formatDate(noticeDate) === target;
     });
   };
 
-  const currentNotices = getNoticesByDate(selectedDate);
+  const currentNotices = showAll ? notices : getNoticesByDate(selectedDate);
 
   // Mark notices as read when they appear in the current view
   useEffect(() => {
@@ -98,22 +117,35 @@ export default function DashboardNotices() {
           </div>
         </div>
         
-        <div className="flex items-center gap-2 bg-[#F2F2F7] p-1 rounded-xl">
-          <button 
-            onClick={() => changeDate(-1)}
-            className="p-1.5 hover:bg-white rounded-lg transition-all"
-          >
-            <ChevronLeft className="w-4 h-4 text-ios-gray" />
-          </button>
-          <div className="px-2 text-[11px] font-black min-w-[80px] text-center">
-            {isToday ? '오늘' : selectedDate.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
+        <div className="flex items-center gap-2">
+          {isTeacher && (
+             <button 
+               onClick={() => setShowAll(!showAll)}
+               className={cn(
+                 "px-3 py-1.5 rounded-xl text-[10px] font-black transition-all",
+                 showAll ? "bg-ios-red text-white" : "bg-[#F2F2F7] text-ios-gray"
+               )}
+             >
+               {showAll ? '날짜별 보기' : '전체 공지'}
+             </button>
+          )}
+          <div className="flex items-center gap-2 bg-[#F2F2F7] p-1 rounded-xl">
+            <button 
+              onClick={() => changeDate(-1)}
+              className="p-1.5 hover:bg-white rounded-lg transition-all"
+            >
+              <ChevronLeft className="w-4 h-4 text-ios-gray" />
+            </button>
+            <div className="px-2 text-[11px] font-black min-w-[80px] text-center">
+              {isToday ? '오늘' : selectedDate.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
+            </div>
+            <button 
+              onClick={() => changeDate(1)}
+              className="p-1.5 hover:bg-white rounded-lg transition-all"
+            >
+              <ChevronRight className="w-4 h-4 text-ios-gray" />
+            </button>
           </div>
-          <button 
-            onClick={() => changeDate(1)}
-            className="p-1.5 hover:bg-white rounded-lg transition-all"
-          >
-            <ChevronRight className="w-4 h-4 text-ios-gray" />
-          </button>
         </div>
       </div>
 
@@ -187,19 +219,26 @@ export default function DashboardNotices() {
                         <span className="text-[9px] font-black text-ios-green bg-ios-green/5 px-2 py-1 rounded-md">확인 완료</span>
                       )}
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-[11px] font-black text-ios-gray flex items-center gap-1.5">
-                        <Clock className="w-3 h-3" /> {notice.authorName}
-                      </span>
-                      {(studentRole === 'teacher' || studentId === '0') && (
-                        <button 
-                          onClick={() => handleDelete(notice.id)}
-                          className="p-1.5 text-ios-red hover:bg-ios-red/10 rounded-lg transition-all"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                    </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[11px] font-black text-ios-gray flex items-center gap-1.5">
+                          <Clock className="w-3 h-3" /> {notice.authorName} 
+                          {(() => {
+                            let d: Date | null = null;
+                            if (notice.createdAt?.toDate) d = notice.createdAt.toDate();
+                            else if (notice.createdAt?.seconds) d = new Date(notice.createdAt.seconds * 1000);
+                            else if (notice.createdAt instanceof Date) d = notice.createdAt;
+                            return showAll && d ? ` (${formatDate(d)})` : '';
+                          })()}
+                        </span>
+                        {isTeacher && (
+                          <button 
+                            onClick={() => handleDelete(notice.id)}
+                            className="p-1.5 text-ios-red hover:bg-ios-red/10 rounded-lg transition-all"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
                   </div>
                 </div>
               ))}

@@ -40,8 +40,8 @@ export default function TeacherNoticeBoard() {
   const storedName = localStorage.getItem('student_name');
   const studentNum = localStorage.getItem('student_id') || '';
   
-  // Explicitly check for 'teacher' role string
-  const isTeacher = studentRole === 'teacher';
+  // Explicitly check for 'teacher' role string or ID 0 or Name
+  const isTeacher = studentRole === 'teacher' || studentNum === '0' || storedName === '김성연';
   const isAuthorizedStudent = studentNum === authorizedStudentNum;
   const canPost = isTeacher || isAuthorizedStudent;
   
@@ -94,10 +94,10 @@ export default function TeacherNoticeBoard() {
     const newAttachments = [...attachments];
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
-      // Increased limit: Approximately 900KB raw data (base64 will be ~1.2MB, which might push Firestore limits, but we'll try to maximize it)
-      // Actually 700KB raw is safer for a 1MB doc. Let's try 900KB and see.
-      if (file.size > 900000) { 
-        alert(`파일 '${file.name}'이 너무 큽니다. 약 900KB 이하의 파일만 첨부 가능합니다.`);
+      // Safer limit: 700KB raw data => ~933KB base64. 
+      // Firestore has a 1MB limit per document.
+      if (file.size > 700000) { 
+        alert(`파일 '${file.name}'이 너무 큽니다. 약 700KB 이하의 파일만 첨부 가능합니다.`);
         continue;
       }
       
@@ -273,9 +273,15 @@ export default function TeacherNoticeBoard() {
                   <div className="flex items-center gap-2">
                     <div className="flex items-center gap-1 text-[10px] font-bold text-ios-gray mr-2">
                       <Clock className="w-3 h-3" />
-                      {notice.createdAt?.toDate ? notice.createdAt.toDate().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) : '방금 전'}
+                      {(() => {
+                        let d: Date | null = null;
+                        if (notice.createdAt?.toDate) d = notice.createdAt.toDate();
+                        else if (notice.createdAt?.seconds) d = new Date(notice.createdAt.seconds * 1000);
+                        else if (notice.createdAt instanceof Date) d = notice.createdAt;
+                        return d ? d.toLocaleTimeString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '방금 전';
+                      })()}
                     </div>
-                    {(isTeacher || studentNum === '0') && (
+                    { (isTeacher || studentNum === '0') && (
                       <button 
                         onClick={() => handleDelete(notice.id)}
                         className="p-1.5 text-ios-red hover:bg-ios-red/10 rounded-xl transition-all"
