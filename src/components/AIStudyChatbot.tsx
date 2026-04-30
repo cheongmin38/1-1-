@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Bot, Send, User, Loader2, Sparkles, Brain, Save, Trash2, History, ChevronRight, MessageSquare, BookOpen, GraduationCap } from 'lucide-react';
 import { getGenAI } from '@/src/lib/gemini';
 import { db } from '@/src/lib/firebase';
-import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, deleteDoc, doc, limit } from 'firebase/firestore';
+import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, deleteDoc, doc, limit, setDoc } from 'firebase/firestore';
 import { cn } from '@/src/lib/utils';
 
 interface Message {
@@ -66,6 +66,37 @@ export default function AIStudyChatbot() {
 
   useEffect(scrollToBottom, [messages]);
 
+  // Load chat session from Firestore
+  useEffect(() => {
+    if (!studentId) return;
+
+    const chatDocRef = doc(db, 'chats', studentId);
+    const unsubscribe = onSnapshot(chatDocRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        if (data.messages) setMessages(data.messages);
+        if (data.persona) setPersona(data.persona);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [studentId]);
+
+  // Save messages and persona whenever they change
+  const saveChatSession = async (newMessages: Message[], newPersona: PersonaType | null) => {
+    if (!studentId) return;
+    try {
+      await setDoc(doc(db, 'chats', studentId), {
+        studentId,
+        messages: newMessages,
+        persona: newPersona,
+        updatedAt: serverTimestamp(),
+      }, { merge: true });
+    } catch (error) {
+      console.error("Save Chat Session Error:", error);
+    }
+  };
+
   useEffect(() => {
     const q = query(collection(db, 'saved_plans'), orderBy('createdAt', 'desc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -84,10 +115,11 @@ export default function AIStudyChatbot() {
     const userMessage: Message = {
       role: 'user',
       content: input.trim(),
-      timestamp: new Date(),
+      timestamp: new Date().toISOString(), // Use string ISO for Firestore storage simplicity
     };
 
-    setMessages(prev => [...prev, userMessage]);
+    const updatedMessages = [...messages, userMessage];
+    setMessages(updatedMessages);
     setInput('');
     setIsLoading(true);
 
@@ -95,7 +127,7 @@ export default function AIStudyChatbot() {
       const ai = getGenAI();
       
       const chat = ai.chats.create({ 
-        model: "gemini-3-flash-preview",
+        model: "gemini-1.5-flash",
         config: {
           systemInstruction: `당신은 ${studentName} 학생을 위한 똑똑한 AI 공부 챗봇 '클래스메이트 AI'입니다.
           현재 당신의 성격 유형은 '${PERSONAS[persona].title}'입니다.
@@ -113,24 +145,56 @@ export default function AIStudyChatbot() {
         }
       });
 
-      const result = await chat.sendMessage({
+      const response = await chat.sendMessageStream({
         message: userMessage.content
       });
       
-      const text = result.text;
-
-      setMessages(prev => [...prev, {
+      let fullText = "";
+      
+      // Add initial empty assistant message to be filled
+      const assistantId = Date.now().toString();
+      const initialAssistantMessage: Message = {
+        id: assistantId,
         role: 'assistant',
-        content: text || "죄송해요, 답변을 생성하지 못했어요.",
-        timestamp: new Date(),
-      }]);
+        content: "",
+        timestamp: new Date().toISOString(),
+      };
+      
+      setMessages(prev => [...prev, initialAssistantMessage]);
+
+      for await (const chunk of response.stream) {
+        const chunkText = chunk.text;
+        fullText += chunkText;
+        
+        setMessages(prev => {
+          const newMessages = [...prev];
+          if (newMessages.length > 0) {
+            newMessages[newMessages.length - 1] = {
+              ...newMessages[newMessages.length - 1],
+              content: fullText
+            };
+          }
+          return newMessages;
+        });
+      }
+
+      // After streaming is complete, save the final state to Firestore
+      const finalAssistantMessage: Message = {
+        role: 'assistant',
+        content: fullText,
+        timestamp: new Date().toISOString(),
+      };
+      await saveChatSession([...updatedMessages, finalAssistantMessage], persona);
+
     } catch (error) {
       console.error("Chat Error:", error);
-      setMessages(prev => [...prev, {
+      const errorMessage: Message = {
         role: 'assistant',
         content: "죄송해요, 응답을 생성하는 중에 오류가 발생했어요. 잠시 후 다시 시도해주세요.",
-        timestamp: new Date(),
-      }]);
+        timestamp: new Date().toISOString(),
+      };
+      setMessages(prev => [...prev.slice(0, -1), errorMessage]);
+      await saveChatSession([...updatedMessages, errorMessage], persona);
     } finally {
       setIsLoading(false);
     }
@@ -195,6 +259,7 @@ export default function AIStudyChatbot() {
               onClick={() => {
                 setPersona(null);
                 setMessages([]);
+                saveChatSession([], null);
               }}
               className="px-3 py-2 rounded-xl bg-[#F2F2F7] text-ios-gray hover:bg-[#E5E5EA] transition-all text-[9px] font-black uppercase tracking-widest border border-black/[0.03]"
             >
@@ -235,7 +300,10 @@ export default function AIStudyChatbot() {
                   {(Object.entries(PERSONAS) as [PersonaType, typeof PERSONAS['empathetic']][]).map(([id, p]) => (
                     <button
                       key={id}
-                      onClick={() => setPersona(id)}
+                      onClick={() => {
+                        setPersona(id);
+                        saveChatSession(messages, id);
+                      }}
                       className="group relative flex flex-col items-center p-8 bg-[#F2F2F7]/50 border border-black/5 rounded-[40px] transition-all hover:scale-[1.03] hover:bg-white hover:shadow-2xl hover:shadow-black/5 text-center space-y-5"
                     >
                       <div className={cn("w-16 h-16 rounded-[28px] flex items-center justify-center transition-transform group-hover:rotate-12 shadow-lg", p.color)}>
@@ -325,7 +393,8 @@ export default function AIStudyChatbot() {
                       )}
                     </div>
                     <span className="text-[10px] text-ios-gray font-bold mx-2">
-                      {m.timestamp instanceof Date ? m.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                      {typeof m.timestamp === 'string' ? new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 
+                       m.timestamp instanceof Date ? m.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
                     </span>
                   </motion.div>
                 ))}
