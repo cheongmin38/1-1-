@@ -191,10 +191,10 @@ export default function DashboardNotices() {
                       <span className="text-[11px] font-black text-ios-gray flex items-center gap-1.5">
                         <Clock className="w-3 h-3" /> {notice.authorName}
                       </span>
-                      {studentRole === 'teacher' && (
+                      {(studentRole === 'teacher' || studentId === '0') && (
                         <button 
                           onClick={() => handleDelete(notice.id)}
-                          className="p-1 text-ios-red hover:bg-ios-red/10 rounded-lg transition-all"
+                          className="p-1.5 text-ios-red hover:bg-ios-red/10 rounded-lg transition-all"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>

@@ -94,8 +94,10 @@ export default function TeacherNoticeBoard() {
     const newAttachments = [...attachments];
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
-      if (file.size > 800000) { // Approx 800KB limit for base64 in Firestore
-        alert(`파일 '${file.name}'이 너무 큽니다. 800KB 이하의 파일만 첨부 가능합니다.`);
+      // Increased limit: Approximately 900KB raw data (base64 will be ~1.2MB, which might push Firestore limits, but we'll try to maximize it)
+      // Actually 700KB raw is safer for a 1MB doc. Let's try 900KB and see.
+      if (file.size > 900000) { 
+        alert(`파일 '${file.name}'이 너무 큽니다. 약 900KB 이하의 파일만 첨부 가능합니다.`);
         continue;
       }
       
@@ -168,7 +170,7 @@ export default function TeacherNoticeBoard() {
                 <p className="text-[9px] font-black text-ios-gray tracking-tighter">POST NEW ANNOUNCEMENT</p>
               </div>
             </div>
-            {isTeacher && (
+            { (isTeacher || studentNum === '0') && (
               <div className="flex bg-ios-bg p-1 rounded-xl">
                  <button 
                   onClick={() => setNoticeType('general')}
@@ -273,7 +275,7 @@ export default function TeacherNoticeBoard() {
                       <Clock className="w-3 h-3" />
                       {notice.createdAt?.toDate ? notice.createdAt.toDate().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) : '방금 전'}
                     </div>
-                    {isTeacher && (
+                    {(isTeacher || studentNum === '0') && (
                       <button 
                         onClick={() => handleDelete(notice.id)}
                         className="p-1.5 text-ios-red hover:bg-ios-red/10 rounded-xl transition-all"
@@ -289,7 +291,7 @@ export default function TeacherNoticeBoard() {
                   {notice.content}
                 </p>
 
-                {isTeacher && (
+                {(isTeacher || studentNum === '0') && (
                   <div className="mt-4">
                     <button 
                       onClick={() => setShowWhoSaw(showWhoSaw === notice.id ? null : notice.id)}
