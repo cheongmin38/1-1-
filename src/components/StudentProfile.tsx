@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { User, Target, BookOpen, Clock, ChevronRight, LogOut, Sparkles, Award, Settings, Trash2 } from 'lucide-react';
+import { User, Target, BookOpen, Clock, ChevronRight, LogOut, Sparkles, Award, Settings, Trash2, Lock } from 'lucide-react';
 import { db } from '@/src/lib/firebase';
 import { collection, query, where, orderBy, onSnapshot, doc, getDoc, setDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { cn } from '@/src/lib/utils';
+
+import { STUDENT_LIST } from '@/src/constants/students';
 
 interface StudyPlan {
   id: string;
@@ -13,13 +15,19 @@ interface StudyPlan {
   createdAt: any;
 }
 
-export default function StudentProfile() {
-  const studentId = localStorage.getItem('student_id') || '0';
-  const studentName = localStorage.getItem('student_name') || '친구';
+export default function StudentProfile({ viewingId }: { viewingId?: string | null }) {
+  const myId = localStorage.getItem('student_id') || '0';
+  const myName = localStorage.getItem('student_name') || '친구';
   const studentRole = localStorage.getItem('student_role') || 'student';
 
+  const isViewingOthers = !!viewingId && viewingId !== myId;
+  const targetId = viewingId || myId;
+  const targetName = isViewingOthers 
+    ? (STUDENT_LIST[parseInt(targetId)]?.name || '학생')
+    : myName;
+
   const [personalGoal, setPersonalGoal] = useState('');
-  const [profileName, setProfileName] = useState(studentName);
+  const [profileName, setProfileName] = useState(targetName);
   const [teacherPassword, setTeacherPassword] = useState('0000');
   const [isEditingGoal, setIsEditingGoal] = useState(false);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
@@ -29,16 +37,21 @@ export default function StudentProfile() {
   const [expandedPlanId, setExpandedPlanId] = useState<string | null>(null);
 
   useEffect(() => {
+    // Sync profile name when target changes
+    setProfileName(targetName);
+    
     // Load personal goal from profile
-    const profileRef = doc(db, 'profiles', studentId);
+    const profileRef = doc(db, 'profiles', targetId);
     const unsubscribeProfile = onSnapshot(profileRef, (doc) => {
       if (doc.exists()) {
         setPersonalGoal(doc.data().personalGoal || '');
+      } else {
+        setPersonalGoal('');
       }
     });
 
-    // Load teacher auth code if teacher
-    if (studentRole === 'teacher') {
+    // Load teacher auth code if teacher and viewing self
+    if (studentRole === 'teacher' && !isViewingOthers) {
       const authRef = doc(db, 'config', 'teacher_auth');
       const unsubscribeAuth = onSnapshot(authRef, (doc) => {
         if (doc.exists()) {
@@ -54,7 +67,7 @@ export default function StudentProfile() {
     // Load saved plans
     const q = query(
       collection(db, 'study_plans'),
-      where('studentId', '==', studentId),
+      where('studentId', '==', targetId),
       orderBy('createdAt', 'desc')
     );
     const unsubscribePlans = onSnapshot(q, (snapshot) => {
@@ -64,15 +77,20 @@ export default function StudentProfile() {
       })) as StudyPlan[];
       setSavedPlans(plans);
       setIsLoading(false);
+    }, (error) => {
+      console.error("Error loading plans:", error);
+      setSavedPlans([]);
+      setIsLoading(false);
     });
 
     return () => {
       unsubscribeProfile();
       unsubscribePlans();
     };
-  }, [studentId]);
+  }, [targetId, targetName, isViewingOthers, studentRole]);
 
   const handleUpdatePassword = async () => {
+    if (isViewingOthers) return;
     if (teacherPassword.length < 4) {
       alert('비밀번호는 4자리 이상이어야 해!');
       return;
@@ -219,7 +237,7 @@ export default function StudentProfile() {
               </>
             )}
             <span className="px-3 py-1 bg-ios-blue/10 text-ios-blue text-[10px] font-black rounded-full uppercase tracking-widest leading-none translate-y-[1px]">
-               {studentRole === 'teacher' ? '선생님' : `${studentId}번 학생`}
+               {targetId === '0' ? '선생님' : `${targetId}번 학생`}
             </span>
           </div>
           <p className="text-ios-gray text-sm font-bold tracking-tight">평택고등학교 1학년 1반</p>
@@ -272,29 +290,31 @@ export default function StudentProfile() {
           </div>
 
           <div className="flex justify-end">
-            {isEditingGoal ? (
-              <div className="flex gap-2">
+            {!isViewingOthers && (
+              isEditingGoal ? (
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => setIsEditingGoal(false)}
+                    className="px-6 py-3 bg-ios-bg text-ios-gray rounded-xl text-xs font-black uppercase tracking-widest"
+                  >
+                    취소
+                  </button>
+                  <button 
+                    onClick={handleUpdateGoal}
+                    className="px-6 py-3 bg-ios-blue text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-ios-blue/20"
+                  >
+                    저장하기
+                  </button>
+                </div>
+              ) : (
                 <button 
-                  onClick={() => setIsEditingGoal(false)}
-                  className="px-6 py-3 bg-ios-bg text-ios-gray rounded-xl text-xs font-black uppercase tracking-widest"
+                  onClick={() => setIsEditingGoal(true)}
+                  className="px-6 py-3 bg-[#1C1C1E] text-white rounded-xl text-xs font-black uppercase tracking-widest flex items-center gap-2 hover:opacity-90 active:scale-95 transition-all"
                 >
-                  취소
+                  <Settings className="w-3.5 h-3.5" />
+                  목표 수정
                 </button>
-                <button 
-                  onClick={handleUpdateGoal}
-                  className="px-6 py-3 bg-ios-blue text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-ios-blue/20"
-                >
-                  저장하기
-                </button>
-              </div>
-            ) : (
-              <button 
-                onClick={() => setIsEditingGoal(true)}
-                className="px-6 py-3 bg-[#1C1C1E] text-white rounded-xl text-xs font-black uppercase tracking-widest flex items-center gap-2 hover:opacity-90 active:scale-95 transition-all"
-              >
-                <Settings className="w-3.5 h-3.5" />
-                목표 수정
-              </button>
+              )
             )}
           </div>
         </div>

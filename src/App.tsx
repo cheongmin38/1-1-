@@ -35,9 +35,22 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
   const [unreadCount, setUnreadCount] = useState(0);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [viewingStudentId, setViewingStudentId] = useState<string | null>(null);
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [activeTab]);
+
+  const handleViewStudentProfile = (sid: string) => {
+    setViewingStudentId(sid);
+    setActiveTab('profile');
+  };
+
+  useEffect(() => {
+    // Reset viewing student when switching away from profile tab manually
+    if (activeTab !== 'profile') {
+      setViewingStudentId(null);
+    }
   }, [activeTab]);
 
   useEffect(() => {
@@ -248,13 +261,13 @@ export default function App() {
 
               {activeTab === 'profile' && (
                 <div className="max-w-4xl mx-auto w-full px-4">
-                  <StudentProfile />
+                  <StudentProfile viewingId={viewingStudentId} />
                 </div>
               )}
 
               {activeTab === 'management' && studentRole === 'teacher' && (
                 <div className="max-w-3xl mx-auto w-full">
-                  <TeacherControlCenter />
+                  <TeacherControlCenter onSelectStudent={handleViewStudentProfile} />
                 </div>
               )}
             </motion.div>

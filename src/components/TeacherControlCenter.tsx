@@ -14,7 +14,7 @@ interface Notice {
   viewers?: string[];
 }
 
-export default function TeacherControlCenter() {
+export default function TeacherControlCenter({ onSelectStudent }: { onSelectStudent?: (id: string) => void }) {
   const [notices, setNotices] = useState<Notice[]>([]);
   const [students] = useState(Object.values(STUDENT_LIST));
   const [authorizedStudent, setAuthorizedStudent] = useState('');
@@ -170,7 +170,11 @@ export default function TeacherControlCenter() {
           </div>
           <div className="ios-card grid grid-cols-4 sm:grid-cols-6 gap-2 max-h-[400px] overflow-y-auto no-scrollbar">
              {students.map((s) => (
-               <div key={s.number} className="aspect-square flex flex-col items-center justify-center bg-[#F2F2F7] rounded-2xl border border-black/[0.03] transition-all hover:scale-105 hover:bg-white hover:shadow-lg group cursor-pointer relative overflow-hidden">
+               <div 
+                 key={s.number} 
+                 onClick={() => onSelectStudent?.(s.number.toString())}
+                 className="aspect-square flex flex-col items-center justify-center bg-[#F2F2F7] rounded-2xl border border-black/[0.03] transition-all hover:scale-105 hover:bg-white hover:shadow-lg group cursor-pointer relative overflow-hidden"
+               >
                  <span className="text-sm font-black text-[#1C1C1E]">{s.number}</span>
                  <span className="text-[10px] font-bold text-[#1C1C1E] truncate w-full text-center px-1">{s.name}</span>
                  <span className="text-[7px] font-black text-ios-gray uppercase opacity-0 group-hover:opacity-100 transition-all">

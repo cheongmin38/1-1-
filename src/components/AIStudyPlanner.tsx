@@ -17,7 +17,6 @@ interface GeneratedPlan {
   steps: StudyPlanStep[];
   tips: string[];
 }
-import { getGenAI } from '@/src/lib/gemini';
 
 export default function AIStudyPlanner() {
   const studentId = localStorage.getItem('student_id') || '0';
@@ -87,17 +86,28 @@ export default function AIStudyPlanner() {
     `;
 
     try {
-      const ai = getGenAI();
-      const response = await ai.models.generateContent({ 
-        model: "gemini-3-flash-preview",
-        contents: prompt,
-        config: {
-          responseMimeType: "application/json",
-          temperature: 0.7,
-        }
+      const response = await fetch('/api/gemini/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          model: "gemini-3-flash-preview",
+          contents: [{ role: 'user', parts: [{ text: prompt }] }],
+          config: {
+            generationConfig: {
+              responseMimeType: "application/json",
+              temperature: 0.7,
+            }
+          }
+        })
       });
 
-      const text = response.text;
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || '학습 계획 생성에 실패했습니다.');
+      }
+
+      const result = await response.json();
+      const text = result.text;
 
       if (!text) {
         throw new Error("AI로부터 응답을 받지 못했습니다. (Empty Response)");
