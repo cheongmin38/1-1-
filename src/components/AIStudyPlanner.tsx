@@ -4,6 +4,9 @@ import { Brain, Sparkles, Loader2, ChevronRight, Target, BookOpen, BarChart3, Cl
 import { cn } from '@/src/lib/utils';
 import { db } from '@/src/lib/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { GoogleGenAI } from "@google/genai";
+
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 interface StudyPlanStep {
   day: string;
@@ -86,28 +89,16 @@ export default function AIStudyPlanner() {
     `;
 
     try {
-      const response = await fetch('/api/gemini/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          model: "gemini-2.0-flash",
-          contents: [{ role: 'user', parts: [{ text: prompt }] }],
-          config: {
-            generationConfig: {
-              responseMimeType: "application/json",
-              temperature: 0.7,
-            }
-          }
-        })
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        config: {
+          responseMimeType: "application/json",
+          temperature: 0.7,
+        }
       });
 
-      if (!response.ok) {
-        const errData = await response.json().catch(() => ({}));
-        throw new Error(errData.error || '학습 계획 생성에 실패했습니다.');
-      }
-
-      const result = await response.json();
-      const text = result.text;
+      const text = response.text;
 
       if (!text) {
         throw new Error("AI로부터 응답을 받지 못했습니다. (Empty Response)");
