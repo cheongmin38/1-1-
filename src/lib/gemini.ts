@@ -1,38 +1,7 @@
-import { GoogleGenAI } from "@google/genai";
-
-// Use process.env.GEMINI_API_KEY which is injected by vite.config.ts
-const getApiKey = () => {
-  // Use the key provided by the user as a fallback
-  const FALLBACK_KEY = "AIzaSyDf9tuS7XopWVax7mQa5DF0tM18FAb2CFI";
-  
-  try {
-    const key = process.env.GEMINI_API_KEY || (import.meta as any).env.VITE_GEMINI_API_KEY || FALLBACK_KEY;
-    // If the key is literally the string "undefined", return fallback
-    if (key === "undefined" || key === "null" || !key) return FALLBACK_KEY;
-    return key;
-  } catch {
-    const key = (import.meta as any).env.VITE_GEMINI_API_KEY || FALLBACK_KEY;
-    if (key === "undefined" || key === "null" || !key) return FALLBACK_KEY;
-    return key;
-  }
-};
-
-let genAIInstance: GoogleGenAI | null = null;
-
-export const getGenAI = () => {
-  if (!genAIInstance) {
-    const key = getApiKey();
-    if (!key) {
-      throw new Error("GEMINI_API_KEY is missing. Please set it in the environment.");
-    }
-    genAIInstance = new GoogleGenAI({ apiKey: key });
-  }
-  return genAIInstance;
-};
+// This file now handles API calls to our Express backend which proxies Gemini requests
+// to keep the API key secure on the server.
 
 export async function summarizeNotice(rawText: string) {
-  const ai = getGenAI();
-
   const prompt = `
     다음은 학급 공지사항입니다. 이를 '정보의 효율적 전달'을 목적으로 딱 3줄(혹은 4개 항목)으로 요약해주세요.
     반드시 다음 형식을 지켜주세요:
@@ -46,11 +15,22 @@ export async function summarizeNotice(rawText: string) {
   `;
 
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: prompt,
+    const response = await fetch('/api/gemini/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: "gemini-1.5-flash",
+        contents: [{ role: 'user', parts: [{ text: prompt }] }]
+      }),
     });
-    return response.text || "요약에 실패했습니다.";
+
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err.error || 'Failed to summarize');
+    }
+
+    const result = await response.json();
+    return result.text || "요약에 실패했습니다.";
   } catch (error) {
     console.error("Gemini Error:", error);
     throw error;
@@ -58,8 +38,6 @@ export async function summarizeNotice(rawText: string) {
 }
 
 export async function refineNotice(noticeText: string) {
-  const ai = getGenAI();
-
   const prompt = `
     당신은 친절하고 꼼꼼한 학급 담임 선생님입니다. 
     선생님이 대충 적은 공지사항 초안을 바탕으로, 학생들이 이해하기 쉽고 꼼꼼하게 다듬어진 공지사항을 작성해주세요.
@@ -75,13 +53,30 @@ export async function refineNotice(noticeText: string) {
   `;
 
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: prompt,
+    const response = await fetch('/api/gemini/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: "gemini-1.5-flash",
+        contents: [{ role: 'user', parts: [{ text: prompt }] }]
+      }),
     });
-    return response.text || "공지 다듬기에 실패했습니다.";
+
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err.error || 'Failed to refine');
+    }
+
+    const result = await response.json();
+    return result.text || "공지 다듬기에 실패했습니다.";
   } catch (error) {
     console.error("Gemini Error:", error);
     throw error;
   }
 }
+
+// Since we are moving to a proxy, we don't return the GenAI instance to the frontend.
+// The AIStudyChatbot will use a custom streaming implementation.
+export const getGenAI = () => {
+  throw new Error("Client-side GenAI SDK usage is deprecated. Use direct API calls to /api/gemini instead.");
+};
