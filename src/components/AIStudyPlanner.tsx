@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Brain, Sparkles, Loader2, ChevronRight, Target, BookOpen, BarChart3, Clock, CheckCircle2, Save } from 'lucide-react';
+import { getGenAI } from '@/src/lib/gemini';
 import { cn } from '@/src/lib/utils';
 import { db } from '@/src/lib/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
@@ -86,28 +87,17 @@ export default function AIStudyPlanner() {
     `;
 
     try {
-      const response = await fetch('/api/gemini/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          model: "gemini-1.5-flash",
-          contents: [{ role: 'user', parts: [{ text: prompt }] }],
-          config: {
-            generationConfig: {
-              responseMimeType: "application/json",
-              temperature: 0.7,
-            }
-          }
-        })
+      const ai = getGenAI();
+      const response = await ai.models.generateContent({ 
+        model: "gemini-3-flash-preview",
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          temperature: 0.7,
+        }
       });
 
-      if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.error || 'Failed to generate plan');
-      }
-
-      const result = await response.json();
-      const text = result.text;
+      const text = response.text;
 
       if (!text) {
         throw new Error("AI로부터 응답을 받지 못했습니다. (Empty Response)");
