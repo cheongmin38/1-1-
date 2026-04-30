@@ -1,5 +1,6 @@
-// This file handles API calls to our Express backend which proxies Gemini requests.
-// This keeps the API key secure on the server and avoids browser environment issues.
+import { GoogleGenAI } from "@google/genai";
+
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 export async function summarizeNotice(rawText: string) {
   const prompt = `
@@ -15,22 +16,12 @@ export async function summarizeNotice(rawText: string) {
   `;
 
   try {
-    const response = await fetch('/api/gemini/generate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: "gemini-3-flash-preview",
-        contents: [{ role: 'user', parts: [{ text: prompt }] }]
-      }),
+    const response = await ai.models.generateContent({
+      model: "gemini-2.0-flash",
+      contents: [{ role: 'user', parts: [{ text: prompt }] }]
     });
 
-    if (!response.ok) {
-      const err = await response.json();
-      throw new Error(err.error || 'Failed to summarize');
-    }
-
-    const result = await response.json();
-    return result.text || "요약에 실패했습니다.";
+    return response.text || "요약에 실패했습니다.";
   } catch (error) {
     console.error("Gemini Error:", error);
     throw error;
@@ -53,29 +44,14 @@ export async function refineNotice(noticeText: string) {
   `;
 
   try {
-    const response = await fetch('/api/gemini/generate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: "gemini-3-flash-preview",
-        contents: [{ role: 'user', parts: [{ text: prompt }] }]
-      }),
+    const response = await ai.models.generateContent({
+      model: "gemini-2.0-flash",
+      contents: [{ role: 'user', parts: [{ text: prompt }] }]
     });
 
-    if (!response.ok) {
-      const err = await response.json();
-      throw new Error(err.error || 'Failed to refine');
-    }
-
-    const result = await response.json();
-    return result.text || "공지 다듬기에 실패했습니다.";
+    return response.text || "공지 다듬기에 실패했습니다.";
   } catch (error) {
     console.error("Gemini Error:", error);
     throw error;
   }
 }
-
-// Dummy export to keep compatibility if components still import it
-export const getGenAI = () => {
-  throw new Error("Client-side direct GenAI SDK usage is disabled. Use server proxy routes.");
-};

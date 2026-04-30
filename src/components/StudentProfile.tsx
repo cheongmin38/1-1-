@@ -110,14 +110,13 @@ export default function StudentProfile({ viewingId }: { viewingId?: string | nul
 
   const handleUpdateProfile = async () => {
     try {
-      await setDoc(doc(db, 'profiles', studentId), {
-        studentId,
+      await setDoc(doc(db, 'profiles', myId), {
+        studentId: myId,
         name: profileName,
         updatedAt: serverTimestamp()
       }, { merge: true });
       localStorage.setItem('student_name', profileName);
       setIsEditingProfile(false);
-      // Optional: window.location.reload() to sync other components if needed
     } catch (err) {
       console.error(err);
       alert('프로필 저장 중 오류가 발생했습니다.');
@@ -126,9 +125,9 @@ export default function StudentProfile({ viewingId }: { viewingId?: string | nul
 
   const handleUpdateGoal = async () => {
     try {
-      await setDoc(doc(db, 'profiles', studentId), {
-        studentId,
-        name: studentName,
+      await setDoc(doc(db, 'profiles', myId), {
+        studentId: myId,
+        name: myName,
         personalGoal,
         updatedAt: serverTimestamp()
       }, { merge: true });

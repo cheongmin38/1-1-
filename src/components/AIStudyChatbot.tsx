@@ -4,6 +4,9 @@ import { Bot, Send, User, Loader2, Sparkles, Brain, Save, Trash2, History, Chevr
 import { db } from '@/src/lib/firebase';
 import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, deleteDoc, doc, limit, setDoc } from 'firebase/firestore';
 import { cn } from '@/src/lib/utils';
+import { GoogleGenAI } from "@google/genai";
+
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 interface Message {
   id?: string;
@@ -132,49 +135,35 @@ export default function AIStudyChatbot() {
       await saveChatSession(updatedMessages, persona);
 
       try {
-        // Format history for API
+        // Format history for SDK
         const history = messages.map(m => ({
           role: m.role === 'user' ? 'user' : 'model',
           parts: [{ text: m.content }],
         }));
 
-        const response = await fetch('/api/gemini/stream', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            model: "gemini-3-flash-preview",
-            contents: [
-              ...history,
-              { role: 'user', parts: [{ text: userMessage.content }] }
-            ],
-            config: {
-              systemInstruction: `당신은 ${studentName} 학생을 위한 똑똑한 AI 공부 챗봇 '클래스메이트 AI'입니다.
-                현재 당신의 성격 유형은 '${PERSONAS[persona].title}'입니다.
-                
-                [유형별 지침]
-                ${PERSONAS[persona].instruction}
-                
-                [공통 지침]
-                1. 학생이 학습 계획을 요청하면 반드시 다음 마크다운 형식을 포함해주세요:
-                   ### [계획 제목]
-                   (계획 내용 설명...)
-                   이후 하단에 학생이 저장할 수 있도록 "✨ 이 계획이 마음에 드시나요? 저장 버튼을 눌러보세요!" 라고 안내하세요.
-                2. 단순한 답변보다는 학생이 실천할 수 있는 구체적인 행동 요령을 제시하세요.
-                3. 한국어로 자연스럽게 답변하세요.`,
-            }
-          })
+        const responseStream = await ai.models.generateContentStream({
+          model: "gemini-2.0-flash",
+          contents: [
+            ...history,
+            { role: 'user', parts: [{ text: userMessage.content }] }
+          ],
+          config: {
+            systemInstruction: `당신은 ${studentName} 학생을 위한 똑똑한 AI 공부 챗봇 '클래스메이트 AI'입니다.
+              현재 당신의 성격 유형은 '${PERSONAS[persona].title}'입니다.
+              
+              [유형별 지침]
+              ${PERSONAS[persona].instruction}
+              
+              [공통 지침]
+              1. 학생이 학습 계획을 요청하면 반드시 다음 마크다운 형식을 포함해주세요:
+                 ### [계획 제목]
+                 (계획 내용 설명...)
+                 이후 하단에 학생이 저장할 수 있도록 "✨ 이 계획이 마음에 드시나요? 저장 버튼을 눌러보세요!" 라고 안내하세요.
+              2. 단순한 답변보다는 학생이 실천할 수 있는 구체적인 행동 요령을 제시하세요.
+              3. 한국어로 자연스럽게 답변하세요.`,
+          }
         });
 
-        if (!response.ok) {
-          const errData = await response.json().catch(() => ({}));
-          throw new Error(errData.error || 'AI 서버에 연결하는데 실패했어요.');
-        }
-
-        const reader = response.body?.getReader();
-        const decoder = new TextDecoder();
-        
-        if (!reader) throw new Error('ReadableStream 지원되지 않는 브라우저입니다.');
-      
         let fullText = "";
         
         // Add initial empty assistant message to be filled
@@ -186,36 +175,20 @@ export default function AIStudyChatbot() {
         
         setMessages(prev => [...prev, initialAssistantMessage]);
 
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          
-          const chunkString = decoder.decode(value, { stream: true });
-          const lines = chunkString.split('\n');
-          
-          for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              const data = line.slice(6);
-              if (data === '[DONE]') break;
-              try {
-                const parsed = JSON.parse(data);
-                if (parsed.text) {
-                  fullText += parsed.text;
-                  setMessages(prev => {
-                    const newMessages = [...prev];
-                    if (newMessages.length > 0) {
-                      newMessages[newMessages.length - 1] = {
-                        ...newMessages[newMessages.length - 1],
-                        content: fullText
-                      };
-                    }
-                    return newMessages;
-                  });
-                }
-              } catch (e) {
-                // Ignore parse errors for incomplete chunks
+        for await (const chunk of responseStream) {
+          const chunkText = chunk.text;
+          if (chunkText !== undefined) {
+            fullText += chunkText;
+            setMessages(prev => {
+              const newMessages = [...prev];
+              if (newMessages.length > 0) {
+                newMessages[newMessages.length - 1] = {
+                  ...newMessages[newMessages.length - 1],
+                  content: fullText
+                };
               }
-            }
+              return newMessages;
+            });
           }
         }
 
@@ -227,11 +200,11 @@ export default function AIStudyChatbot() {
       };
       await saveChatSession([...updatedMessages, finalAssistantMessage], persona);
 
-    } catch (error) {
+    } catch (error: any) {
       console.error("Chat Error:", error);
       const errorMessage: Message = {
         role: 'assistant',
-        content: "죄송해요, 응답을 생성하는 중에 오류가 발생했어요. 잠시 후 다시 시도해주세요.",
+        content: `죄송해요, 응답을 생성하는 중에 오류가 발생했어요. (${error.message})`,
         timestamp: new Date().toISOString(),
       };
       setMessages(prev => [...prev.slice(0, -1), errorMessage]);

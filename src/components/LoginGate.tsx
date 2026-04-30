@@ -1,6 +1,6 @@
 import { useState, useEffect, type ReactNode, type FormEvent } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Lock, ArrowRight, User, Sparkles } from 'lucide-react';
+import { Lock, ArrowRight, Sparkles } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { STUDENT_LIST } from '@/src/constants/students';
 import { db } from '@/src/lib/firebase';
@@ -18,12 +18,26 @@ export default function LoginGate({ children }: LoginGateProps) {
   const [errorMessage, setErrorMessage] = useState('번호(1-32)와 이름을 정확히 입력해줘!');
 
   const [isCheckingAuth, setIsCheckingAuth] = useState(false);
+  const [currentTeacherPassword, setCurrentTeacherPassword] = useState('0000');
 
   useEffect(() => {
     const saved = localStorage.getItem('classmate_auth');
     if (saved) {
       setIsAuthenticated(true);
     }
+
+    // Fetch current teacher password for UI hints
+    const fetchTeacherAuth = async () => {
+      try {
+        const teacherConfigDoc = await getDoc(doc(db, 'config', 'teacher_auth'));
+        if (teacherConfigDoc.exists()) {
+          setCurrentTeacherPassword(teacherConfigDoc.data().password || '0000');
+        }
+      } catch (err) {
+        console.error("Error fetching teacher auth:", err);
+      }
+    };
+    fetchTeacherAuth();
   }, []);
 
   const handleLogin = async (e: FormEvent) => {
@@ -35,7 +49,7 @@ export default function LoginGate({ children }: LoginGateProps) {
 
     try {
       // 선생님 전용 로그인 (비밀번호 활용)
-      // 먼저 Firestore에서 선생님 설정을 가져옴 (없으면 기본 0000)
+      // 최신 비밀번호를 다시 확인 (혹시 그 사이 바뀌었을 수도 있으니)
       const teacherConfigDoc = await getDoc(doc(db, 'config', 'teacher_auth'));
       const teacherPassword = teacherConfigDoc.exists() ? teacherConfigDoc.data().password : '0000';
 
@@ -96,8 +110,13 @@ export default function LoginGate({ children }: LoginGateProps) {
         className="w-full max-w-sm"
       >
         <div className="text-center mb-10">
-          <div className="w-24 h-24 bg-white rounded-[2.5rem] shadow-2xl shadow-ios-blue/10 flex items-center justify-center mx-auto mb-8 border border-white/40">
-            <User className="w-12 h-12 text-ios-blue" />
+          <div className="w-24 h-24 bg-white rounded-[2.5rem] shadow-2xl shadow-ios-blue/10 flex items-center justify-center mx-auto mb-8 border border-white/40 overflow-hidden">
+            <img 
+              src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTBRx0uXA8FsJR-0kuBYUjwuVn26reRUG5NyFKxvOhBJ6gDMWUWxOivmtJQ&s=10" 
+              alt="평택고등학교 로고" 
+              className="w-16 h-16 object-contain"
+              referrerPolicy="no-referrer"
+            />
           </div>
           <h1 className="text-4xl font-[900] tracking-tighter text-[#1C1C1E]">반가워, 🔥</h1>
           <p className="text-ios-gray mt-4 text-sm font-bold tracking-tight">평택고 1학년 1반 친구들을 위한 공간입니다.<br />정보를 입력하고 로그인해줘!</p>
@@ -114,11 +133,11 @@ export default function LoginGate({ children }: LoginGateProps) {
                 placeholder="출석 번호 (1~32 또는 코드)"
                 className={cn(
                   "w-full px-8 py-5 bg-white rounded-[1.5rem] border-transparent transition-all outline-none text-lg font-black placeholder:text-gray-200 shadow-sm",
-                  error && !(studentNumber === '0000' || (parseInt(studentNumber) >= 1 && parseInt(studentNumber) <= 32)) ? "ring-4 ring-ios-red/20 bg-ios-red/5" : "focus:ring-4 focus:ring-ios-blue/10 bg-white"
+                  error && !(studentNumber === currentTeacherPassword || (parseInt(studentNumber) >= 1 && parseInt(studentNumber) <= 32)) ? "ring-4 ring-ios-red/20 bg-ios-red/5" : "focus:ring-4 focus:ring-ios-blue/10 bg-white"
                 )}
                 autoFocus
               />
-              {studentNumber === '0000' && (
+              {studentNumber === currentTeacherPassword && (
                 <div className="absolute right-6 top-1/2 -translate-y-1/2">
                   <span className="px-3 py-1 bg-ios-blue text-white text-[10px] font-black rounded-full uppercase tracking-widest animate-pulse">
                     Teacher Verified
@@ -133,7 +152,7 @@ export default function LoginGate({ children }: LoginGateProps) {
                   type="text"
                   value={studentName}
                   onChange={(e) => setStudentName(e.target.value)}
-                  placeholder={studentNumber === '0000' ? "성함을 입력해줘 (김성연)" : "이름을 입력해줘"}
+                  placeholder={studentNumber === currentTeacherPassword ? "성함을 입력해줘 (김성연)" : "이름을 입력해줘"}
                   className={cn(
                     "w-full px-8 py-5 bg-white rounded-[1.5rem] border-transparent transition-all outline-none text-lg font-black placeholder:text-gray-200 shadow-sm",
                     error && studentName.trim().length === 0 ? "ring-4 ring-ios-red/20 bg-ios-red/5" : "focus:ring-4 focus:ring-ios-blue/10 bg-white"
