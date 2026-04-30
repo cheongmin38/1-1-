@@ -18,6 +18,9 @@ import AIStudyChatbot from './components/AIStudyChatbot';
 import StudentProfile from './components/StudentProfile';
 import DailyIdiomCard from './components/DailyIdiomCard';
 import FreeBoard from './components/FreeBoard';
+import Notifications from './components/Notifications';
+import { db } from './lib/firebase';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { cn } from './lib/utils';
 import { Brain, UserCircle, Bot } from 'lucide-react';
 import { getDailyContent } from './lib/dailyContent';
@@ -25,17 +28,38 @@ import { getDailyContent } from './lib/dailyContent';
 type TabType = 'dashboard' | 'meal' | 'chat' | 'timetable' | 'management' | 'profile' | 'board';
 
 export default function App() {
+  const studentId = localStorage.getItem('student_id') || '0';
+  const studentName = localStorage.getItem('student_name') || '친구';
+  const studentRole = localStorage.getItem('student_role') || 'student';
+
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [showNotifications, setShowNotifications] = useState(false);
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [activeTab]);
 
-  const [presidentMessage] = useState("평택고 1-1 친구들, 내일 수행평가 잊지 말고 준비해오자! 화이팅! 🦅");
+  useEffect(() => {
+    const sid = studentRole === 'teacher' ? 'teacher' : studentId;
+    if (!sid || sid === '0') return;
 
-  const studentId = localStorage.getItem('student_id') || '0';
-  const studentName = localStorage.getItem('student_name') || '친구';
-  const studentRole = localStorage.getItem('student_role') || 'student';
+    const q = query(
+      collection(db, 'notifications'),
+      where('targetUserId', '==', sid),
+      where('isRead', '==', false)
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setUnreadCount(snapshot.size);
+    }, (error) => {
+      console.error("Notifications unread count error:", error);
+    });
+
+    return () => unsubscribe();
+  }, [studentId, studentRole]);
+
+  const [presidentMessage] = useState("평택고 1-1 친구들, 내일 수행평가 잊지 말고 준비해오자! 화이팅! 🦅");
 
   const { quote } = getDailyContent();
 
@@ -93,6 +117,17 @@ export default function App() {
             </div>
              <div className="flex items-center gap-3">
                <button 
+                  onClick={() => setShowNotifications(true)}
+                  className="w-10 h-10 rounded-full flex items-center justify-center bg-white border border-black/[0.05] transition-all active:scale-95 shadow-sm relative"
+               >
+                  <Bell className="w-5 h-5 text-ios-blue" />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-ios-red text-white text-[10px] font-black rounded-full flex items-center justify-center border-2 border-white animate-in zoom-in">
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </span>
+                  )}
+               </button>
+               <button 
                   onClick={() => setActiveTab('profile')}
                   className={cn(
                     "w-10 h-10 rounded-full flex items-center justify-center transition-all active:scale-95 shadow-sm overflow-hidden",
@@ -114,10 +149,21 @@ export default function App() {
         {/* Dynamic Content */}
         <main className={cn(
           "flex-1 w-full flex flex-col transition-all duration-500",
-          activeTab === 'chat' ? "max-w-none px-0 pt-0" : "max-w-6xl mx-auto px-4 sm:px-8 pt-4"
+          (activeTab === 'chat' || showNotifications) ? "max-w-none px-0 pt-0" : "max-w-6xl mx-auto px-4 sm:px-8 pt-4"
         )}>
           <AnimatePresence mode="wait" initial={false}>
-            <motion.div
+            {showNotifications ? (
+              <motion.div
+                key="notifications"
+                initial={{ opacity: 0, x: 50 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 50 }}
+                className="flex-1 h-full"
+              >
+                <Notifications onBack={() => setShowNotifications(false)} />
+              </motion.div>
+            ) : (
+              <motion.div
               key={activeTab}
               initial={{ opacity: 0, y: 15, scale: 0.99 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -212,6 +258,7 @@ export default function App() {
                 </div>
               )}
             </motion.div>
+            )}
           </AnimatePresence>
         </main>
 

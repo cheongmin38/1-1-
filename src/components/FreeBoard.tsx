@@ -14,6 +14,16 @@ interface Post {
   category: 'funny' | 'improvement' | 'discomfort' | 'chat';
   createdAt: any;
   likes: number;
+  likedBy?: string[];
+}
+
+interface Comment {
+  id: string;
+  authorId: string;
+  authorName: string;
+  content: string;
+  isAnonymous: boolean;
+  createdAt: any;
 }
 
 const CATEGORIES = [
@@ -32,6 +42,9 @@ export default function FreeBoard() {
   const [category, setCategory] = useState<Post['category']>('chat');
   const [filter, setFilter] = useState('all');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
+  const [comments, setComments] = useState<Record<string, Comment[]>>({});
+  const [commentInputs, setCommentInputs] = useState<Record<string, string>>({});
 
   const studentId = localStorage.getItem('student_id') || 'unknown';
   const studentName = localStorage.getItem('student_name') || '익명';
@@ -44,6 +57,8 @@ export default function FreeBoard() {
         ...doc.data()
       })) as Post[];
       setPosts(newPosts);
+    }, (error) => {
+      console.error("FreeBoard posts load error:", error);
     });
     return () => unsubscribe();
   }, []);
@@ -72,15 +87,62 @@ export default function FreeBoard() {
     }
   };
 
-  const handleLike = async (postId: string) => {
+  const sendNotification = async (targetUserId: string, title: string, body: string, type: 'comment' | 'like') => {
+    if (targetUserId === studentId) return;
     try {
-      await updateDoc(doc(db, 'free_board', postId), {
+      await addDoc(collection(db, 'notifications'), {
+        targetUserId,
+        title,
+        body,
+        type,
+        isRead: false,
+        createdAt: serverTimestamp(),
+      });
+    } catch (e) { console.error(e); }
+  };
+
+  const handleLike = async (post: Post) => {
+    if ("vibrate" in navigator) navigator.vibrate(50);
+    try {
+      await updateDoc(doc(db, 'free_board', post.id), {
         likes: increment(1)
       });
+      if (post.likes % 5 === 0) {
+        sendNotification(post.authorId, "내 글이 인기가 많아요!", `${post.content.substring(0, 20)}...`, 'like');
+      }
     } catch (error) {
       console.error("Error liking post:", error);
     }
   };
+
+  const handleCommentSubmit = async (postId: string, postAuthorId: string, postContent: string) => {
+    const text = commentInputs[postId]?.trim();
+    if (!text) return;
+
+    try {
+      await addDoc(collection(db, `free_board/${postId}/comments`), {
+        authorId: studentId,
+        authorName: studentName,
+        content: text,
+        isAnonymous,
+        createdAt: serverTimestamp(),
+      });
+      setCommentInputs(prev => ({ ...prev, [postId]: '' }));
+      sendNotification(postAuthorId, "새로운 댓글이 달렸어요!", `${postContent.substring(0, 20)}... 에 댓글이 달렸습니다.`, 'comment');
+    } catch (e) { console.error(e); }
+  };
+
+  useEffect(() => {
+    if (!selectedPostId) return;
+    const q = query(collection(db, `free_board/${selectedPostId}/comments`), orderBy('createdAt', 'asc'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Comment[];
+      setComments(prev => ({ ...prev, [selectedPostId]: docs }));
+    }, (error) => {
+      console.error(`Comments load error for post ${selectedPostId}:`, error);
+    });
+    return () => unsubscribe();
+  }, [selectedPostId]);
 
   const handleDelete = async (postId: string, authorId: string) => {
     if (authorId !== studentId && studentId !== '0') {
@@ -244,13 +306,26 @@ export default function FreeBoard() {
               </p>
 
               <div className="flex items-center justify-between mt-4 border-t border-black/[0.03] pt-3">
-                <button 
-                  onClick={() => handleLike(post.id)}
-                  className="flex items-center gap-1.5 text-ios-gray hover:text-ios-pink transition-colors group/like"
-                >
-                  <Heart className={cn("w-4 h-4 transition-transform group-active/like:scale-125", post.likes > 0 && "fill-ios-pink text-ios-pink")} />
-                  <span className="text-xs font-black">{post.likes}</span>
-                </button>
+                <div className="flex items-center gap-4">
+                  <button 
+                    onClick={() => handleLike(post)}
+                    className="flex items-center gap-1.5 text-ios-gray hover:text-ios-pink transition-all active:scale-125 group/like"
+                  >
+                    <Heart className={cn(
+                      "w-4 h-4 transition-all", 
+                      post.likes > 0 ? "fill-ios-pink text-ios-pink" : "group-hover/like:text-ios-pink"
+                    )} />
+                    <span className={cn("text-xs font-black", post.likes > 0 && "text-ios-pink")}>{post.likes}</span>
+                  </button>
+
+                  <button 
+                    onClick={() => setSelectedPostId(selectedPostId === post.id ? null : post.id)}
+                    className="flex items-center gap-1.5 text-ios-gray hover:text-ios-blue transition-colors"
+                  >
+                    <MessageSquare className="w-4 h-4" />
+                    <span className="text-xs font-black">댓글</span>
+                  </button>
+                </div>
 
                 {(post.authorId === studentId || studentId === '0') && (
                   <button 
@@ -261,6 +336,71 @@ export default function FreeBoard() {
                   </button>
                 )}
               </div>
+
+              {/* Comment Section */}
+              <AnimatePresence>
+                {selectedPostId === post.id && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="mt-4 pt-4 border-t border-black/[0.03] space-y-4">
+                      {/* Comment List */}
+                      <div className="space-y-3 max-h-60 overflow-y-auto no-scrollbar">
+                        {comments[post.id]?.map((c) => (
+                          <div key={c.id} className="flex gap-2">
+                            <div className={cn(
+                              "w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0",
+                              c.isAnonymous ? "bg-gray-100 text-ios-gray" : "bg-ios-blue/10 text-ios-blue"
+                            )}>
+                              <User className="w-3.5 h-3.5" />
+                            </div>
+                            <div className="flex-1 bg-[#F2F2F7]/50 rounded-2xl p-2.5">
+                              <div className="flex justify-between items-center mb-0.5">
+                                <span className="text-[11px] font-black">{c.isAnonymous ? '익명' : c.authorName}</span>
+                                <span className="text-[9px] text-ios-gray font-bold">
+                                  {c.createdAt?.toDate ? new Date(c.createdAt.toDate()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                                </span>
+                              </div>
+                              <p className="text-[13px] text-[#1C1C1E] font-medium leading-relaxed">{c.content}</p>
+                            </div>
+                          </div>
+                        ))}
+                        {(!comments[post.id] || comments[post.id].length === 0) && (
+                          <p className="text-center py-4 text-[11px] text-ios-gray font-bold">
+                            첫 댓글을 남겨보세요!
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Comment Input */}
+                      <form 
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          handleCommentSubmit(post.id, post.authorId, post.content);
+                        }}
+                        className="flex items-center gap-2"
+                      >
+                        <input 
+                          value={commentInputs[post.id] || ''}
+                          onChange={(e) => setCommentInputs(prev => ({ ...prev, [post.id]: e.target.value }))}
+                          placeholder="댓글을 입력하세요..."
+                          className="flex-1 bg-[#F2F2F7] rounded-xl px-4 py-2 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-ios-blue/30"
+                        />
+                        <button 
+                          type="submit"
+                          disabled={!commentInputs[post.id]?.trim()}
+                          className="p-2 bg-ios-blue text-white rounded-lg disabled:opacity-50 transition-all active:scale-95"
+                        >
+                          <Send className="w-3.5 h-3.5" />
+                        </button>
+                      </form>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </motion.div>
           ))}
         </AnimatePresence>

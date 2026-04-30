@@ -77,6 +77,8 @@ export default function AIStudyChatbot() {
         if (data.messages) setMessages(data.messages);
         if (data.persona) setPersona(data.persona);
       }
+    }, (error) => {
+      console.error("Chat session load error:", error);
     });
 
     return () => unsubscribe();
@@ -104,6 +106,8 @@ export default function AIStudyChatbot() {
         .map(doc => ({ id: doc.id, ...doc.data() }))
         .filter((plan: any) => plan.studentId === studentId) as SavedPlan[];
       setSavedPlans(plans);
+    }, (error) => {
+      console.error("Saved plans load error:", error);
     });
     return () => unsubscribe();
   }, [studentId]);
@@ -126,22 +130,28 @@ export default function AIStudyChatbot() {
     try {
       const ai = getGenAI();
       
+      const history = messages.map(m => ({
+        role: m.role === 'user' ? 'user' : 'model',
+        parts: [{ text: m.content }],
+      }));
+
       const chat = ai.chats.create({ 
-        model: "gemini-1.5-flash",
+        model: "gemini-3-flash-preview",
         config: {
           systemInstruction: `당신은 ${studentName} 학생을 위한 똑똑한 AI 공부 챗봇 '클래스메이트 AI'입니다.
-          현재 당신의 성격 유형은 '${PERSONAS[persona].title}'입니다.
-          
-          [유형별 지침]
-          ${PERSONAS[persona].instruction}
-          
-          [공통 지침]
-          1. 학생이 학습 계획을 요청하면 반드시 다음 마크다운 형식을 포함해주세요:
-             ### [계획 제목]
-             (계획 내용 설명...)
-             이후 하단에 학생이 저장할 수 있도록 "✨ 이 계획이 마음에 드시나요? 저장 버튼을 눌러보세요!" 라고 안내하세요.
-          2. 단순한 답변보다는 학생이 실천할 수 있는 구체적인 행동 요령을 제시하세요.
-          3. 한국어로 자연스럽게 답변하세요.`,
+            현재 당신의 성격 유형은 '${PERSONAS[persona].title}'입니다.
+            
+            [유형별 지침]
+            ${PERSONAS[persona].instruction}
+            
+            [공통 지침]
+            1. 학생이 학습 계획을 요청하면 반드시 다음 마크다운 형식을 포함해주세요:
+               ### [계획 제목]
+               (계획 내용 설명...)
+               이후 하단에 학생이 저장할 수 있도록 "✨ 이 계획이 마음에 드시나요? 저장 버튼을 눌러보세요!" 라고 안내하세요.
+            2. 단순한 답변보다는 학생이 실천할 수 있는 구체적인 행동 요령을 제시하세요.
+            3. 한국어로 자연스럽게 답변하세요.`,
+          history: history as any
         }
       });
 
@@ -152,9 +162,7 @@ export default function AIStudyChatbot() {
       let fullText = "";
       
       // Add initial empty assistant message to be filled
-      const assistantId = Date.now().toString();
       const initialAssistantMessage: Message = {
-        id: assistantId,
         role: 'assistant',
         content: "",
         timestamp: new Date().toISOString(),
@@ -162,8 +170,8 @@ export default function AIStudyChatbot() {
       
       setMessages(prev => [...prev, initialAssistantMessage]);
 
-      for await (const chunk of response.stream) {
-        const chunkText = chunk.text;
+      for await (const chunk of response) {
+        const chunkText = (chunk as any).text || "";
         fullText += chunkText;
         
         setMessages(prev => {
@@ -255,16 +263,29 @@ export default function AIStudyChatbot() {
         </div>
         <div className="flex items-center gap-2">
           {persona && (
-            <button 
-              onClick={() => {
-                setPersona(null);
-                setMessages([]);
-                saveChatSession([], null);
-              }}
-              className="px-3 py-2 rounded-xl bg-[#F2F2F7] text-ios-gray hover:bg-[#E5E5EA] transition-all text-[9px] font-black uppercase tracking-widest border border-black/[0.03]"
-            >
-              교체
-            </button>
+            <div className="flex items-center gap-1">
+              <button 
+                onClick={() => {
+                  setPersona(null);
+                  // Don't clear messages here, just go back to persona selection to "change" it
+                }}
+                className="px-3 py-2 rounded-xl bg-[#F2F2F7] text-ios-gray hover:bg-[#E5E5EA] transition-all text-[9px] font-black uppercase tracking-widest border border-black/[0.03]"
+              >
+                페르소나 변경
+              </button>
+              <button 
+                onClick={() => {
+                  if (confirm("대화 내용을 초기화하시겠습니까?")) {
+                    setMessages([]);
+                    saveChatSession([], persona);
+                  }
+                }}
+                className="p-2.5 rounded-xl bg-ios-red/10 text-ios-red hover:bg-ios-red/20 transition-all border border-ios-red/10"
+                title="대화 초기화"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
           )}
           <button 
             onClick={() => setShowHistory(!showHistory)}
