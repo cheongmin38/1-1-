@@ -15,6 +15,7 @@ import DDayCard from './components/DDayCard';
 import QuickLinks from './components/QuickLinks';
 import TeacherControlCenter from './components/TeacherControlCenter';
 import AIStudyChatbot from './components/AIStudyChatbot';
+import TeacherNoticeBoard from './components/TeacherNoticeBoard';
 import StudentProfile from './components/StudentProfile';
 import DailyIdiomCard from './components/DailyIdiomCard';
 import FreeBoard from './components/FreeBoard';
@@ -22,10 +23,10 @@ import Notifications from './components/Notifications';
 import { db } from './lib/firebase';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { cn } from './lib/utils';
-import { Brain, UserCircle, Bot } from 'lucide-react';
+import { Brain, UserCircle, Bot, ClipboardList } from 'lucide-react';
 import { getDailyContent } from './lib/dailyContent';
 
-type TabType = 'dashboard' | 'meal' | 'chat' | 'timetable' | 'management' | 'profile' | 'board';
+type TabType = 'dashboard' | 'meal' | 'chat' | 'timetable' | 'management' | 'profile' | 'board' | 'notice';
 
 export default function App() {
   const studentId = localStorage.getItem('student_id') || '0';
@@ -36,10 +37,27 @@ export default function App() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [showNotifications, setShowNotifications] = useState(false);
   const [viewingStudentId, setViewingStudentId] = useState<string | null>(null);
+  const [highlightedPostId, setHighlightedPostId] = useState<string | null>(null);
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [activeTab]);
+
+  const handleNotificationClick = (link?: string) => {
+    if (!link) {
+      setShowNotifications(false);
+      return;
+    }
+
+    if (link.startsWith('board:')) {
+      const postId = link.split(':')[1];
+      setHighlightedPostId(postId);
+      setActiveTab('board');
+      setShowNotifications(false);
+    } else {
+      setShowNotifications(false);
+    }
+  };
 
   const handleViewStudentProfile = (sid: string) => {
     setViewingStudentId(sid);
@@ -99,6 +117,7 @@ export default function App() {
 
   const tabs = [
     { id: 'dashboard', label: '대시보드', icon: LayoutDashboard },
+    { id: 'notice', label: '알림장', icon: ClipboardList },
     { id: 'meal', label: '급식', icon: Utensils },
     { id: 'board', label: '자유게시판', icon: MessageSquare },
     { id: 'chat', label: 'AI 상담', icon: Bot },
@@ -173,7 +192,10 @@ export default function App() {
                 exit={{ opacity: 0, x: 50 }}
                 className="flex-1 h-full"
               >
-                <Notifications onBack={() => setShowNotifications(false)} />
+                <Notifications 
+                  onBack={() => setShowNotifications(false)} 
+                  onNotificationClick={handleNotificationClick}
+                />
               </motion.div>
             ) : (
               <motion.div
@@ -251,12 +273,21 @@ export default function App() {
                 </div>
               )}
 
+              {activeTab === 'notice' && (
+                <div className="max-w-3xl mx-auto w-full px-2">
+                  <TeacherNoticeBoard />
+                </div>
+              )}
+
               {activeTab === 'chat' && (
                 <AIStudyChatbot />
               )}
 
               {activeTab === 'board' && (
-                <FreeBoard />
+                <FreeBoard 
+                  highlightPostId={highlightedPostId} 
+                  onClearHighlight={() => setHighlightedPostId(null)} 
+                />
               )}
 
               {activeTab === 'profile' && (

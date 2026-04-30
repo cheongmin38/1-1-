@@ -178,25 +178,9 @@ export default function StudentProfile({ viewingId }: { viewingId?: string | nul
         </div>
         <div className="flex-1 text-center sm:text-left">
           <div className="flex items-center justify-center sm:justify-start gap-3 mb-2">
-            {isEditingProfile && studentRole !== 'teacher' ? (
-              <div className="flex items-center gap-2">
-                <input 
-                  value={profileName}
-                  onChange={(e) => setProfileName(e.target.value)}
-                  className="text-2xl font-[900] tracking-tight text-[#1C1C1E] bg-[#F2F2F7] rounded-xl px-3 py-1 outline-none focus:ring-2 focus:ring-ios-blue/20"
-                  autoFocus
-                />
-                <button 
-                  onClick={handleUpdateProfile}
-                  className="p-2 bg-ios-blue text-white rounded-xl active:scale-95 transition-all"
-                >
-                  <Sparkles className="w-4 h-4" />
-                </button>
-              </div>
-            ) : (
-              <>
+            <>
                 <h2 className="text-3xl font-[900] tracking-tight text-[#1C1C1E]">{profileName}</h2>
-                {studentRole === 'teacher' ? (
+                {studentRole === 'teacher' && (
                    <div className="flex items-center gap-2">
                      <span className="text-[10px] font-black text-ios-blue bg-ios-blue/5 px-2 py-1 rounded-lg">관리자 권한</span>
                      {isEditingPassword ? (
@@ -225,16 +209,8 @@ export default function StudentProfile({ viewingId }: { viewingId?: string | nul
                        </button>
                      )}
                    </div>
-                ) : (
-                  <button 
-                    onClick={() => setIsEditingProfile(true)}
-                    className="p-1 text-ios-gray hover:text-ios-blue transition-colors"
-                  >
-                    <Settings className="w-4 h-4" />
-                  </button>
                 )}
               </>
-            )}
             <span className="px-3 py-1 bg-ios-blue/10 text-ios-blue text-[10px] font-black rounded-full uppercase tracking-widest leading-none translate-y-[1px]">
                {targetId === '0' ? '선생님' : `${targetId}번 학생`}
             </span>

@@ -309,17 +309,19 @@ export default function TeacherNoticeBoard() {
                         >
                           <div className="p-3 bg-white rounded-2xl border border-black/5 space-y-3">
                             <div>
-                              <p className="text-[10px] font-black text-ios-blue mb-1 uppercase tracking-tighter">확인한 학생 ({notice.viewers?.length || 0}명)</p>
+                              <p className="text-[10px] font-black text-ios-blue mb-1 uppercase tracking-tighter">확인한 학생 ({notice.viewers?.length || 0}번 읽음)</p>
                               <p className="text-[10px] text-ios-gray font-bold">
-                                {notice.viewers && notice.viewers.length > 0 ? notice.viewers.join(', ') : '아직 아무도 확인하지 않았습니다.'}
+                                {notice.viewers && notice.viewers.length > 0 ? 
+                                  notice.viewers.sort((a, b) => parseInt(a) - parseInt(b)).map(v => v.includes(' ') ? `${v.split(' ')[0]}번 ${v.split(' ')[1]}` : v).join(', ') 
+                                  : '아직 아무도 확인하지 않았습니다.'}
                               </p>
                             </div>
                             <div className="pt-2 border-t border-black/[0.03]">
-                              <p className="text-[10px] font-black text-ios-red mb-1 uppercase tracking-tighter">아직 확인하지 않은 학생 ({Object.values(STUDENT_LIST).filter(s => s.role !== 'teacher' && !notice.viewers?.includes(s.name)).length}명)</p>
+                              <p className="text-[10px] font-black text-ios-red mb-1 uppercase tracking-tighter">아직 확인하지 않은 학생 ({Object.values(STUDENT_LIST).filter(s => s.role !== 'teacher' && !notice.viewers?.some(v => v.includes(s.name))).length}명)</p>
                               <p className="text-[10px] text-ios-gray font-bold line-clamp-3">
                                 {Object.values(STUDENT_LIST)
-                                  .filter(s => s.role !== 'teacher' && !notice.viewers?.includes(s.name))
-                                  .map(s => s.name)
+                                  .filter(s => s.role !== 'teacher' && !notice.viewers?.some(v => v.includes(s.name)))
+                                  .map(s => `${s.number}번 ${s.name}`)
                                   .join(', ')}
                               </p>
                             </div>

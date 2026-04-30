@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Bell, Calendar, ChevronLeft, ChevronRight, Clock, Megaphone, Info, AlertTriangle, File, ImageIcon } from 'lucide-react';
+import { Bell, Calendar, ChevronLeft, ChevronRight, Clock, Megaphone, Info, AlertTriangle, File, ImageIcon, Trash2 } from 'lucide-react';
 import { db } from '@/src/lib/firebase';
-import { collection, query, orderBy, onSnapshot, where, Timestamp, doc, updateDoc, arrayUnion } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, where, Timestamp, doc, updateDoc, arrayUnion, deleteDoc } from 'firebase/firestore';
 import { cn } from '@/src/lib/utils';
 import ImageModal from './ImageModal';
 
@@ -22,6 +22,7 @@ export default function DashboardNotices() {
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const studentName = localStorage.getItem('student_name') || '익명';
+  const studentId = localStorage.getItem('student_id') || '';
   const studentRole = localStorage.getItem('student_role') || 'student';
 
   useEffect(() => {
@@ -51,10 +52,13 @@ export default function DashboardNotices() {
   useEffect(() => {
     if (studentRole === 'teacher' || studentName === '익명') return; // Don't track teacher or logged-out views
     
+    // Viewer identity: "[Number] Name"
+    const viewerIdentity = studentId && studentId !== '0' ? `${studentId} ${studentName}` : studentName;
+    
     currentNotices.forEach(notice => {
-      if (!notice.viewers?.includes(studentName)) {
+      if (!notice.viewers?.includes(viewerIdentity)) {
         updateDoc(doc(db, 'notices', notice.id), {
-          viewers: arrayUnion(studentName)
+          viewers: arrayUnion(viewerIdentity)
         }).catch(err => console.error("Notice read track error:", err));
       }
     });
@@ -67,6 +71,19 @@ export default function DashboardNotices() {
   };
 
   const isToday = formatDate(selectedDate) === formatDate(new Date());
+
+  // Viewer identity: "[Number] Name"
+  const viewerIdentity = studentId && studentId !== '0' ? `${studentId} ${studentName}` : studentName;
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('이 공지사항을 삭제할까요?')) return;
+    try {
+      await deleteDoc(doc(db, 'notices', id));
+    } catch (err) {
+      console.error("Delete Error:", err);
+      alert("삭제 중 오류가 발생했습니다.");
+    }
+  };
 
   return (
     <div className="ios-card bg-white p-5 border-black/5 shadow-sm overflow-hidden mb-6">
@@ -161,13 +178,28 @@ export default function DashboardNotices() {
 
                   <div className="mt-3 pt-2 border-t border-black/[0.05] flex items-center justify-between">
                     <div className="flex items-center gap-1.5">
-                      {notice.viewers?.includes(studentName) && (
-                        <span className="text-[9px] font-black text-ios-blue bg-ios-blue/5 px-1.5 py-0.5 rounded">읽음</span>
+                      {notice.viewers && notice.viewers.length > 0 && (
+                        <span className="text-[9px] font-black text-ios-blue bg-ios-blue/5 px-2 py-1 rounded-md">
+                          {notice.viewers.length}번 읽음
+                        </span>
+                      )}
+                      {notice.viewers?.includes(viewerIdentity) && (
+                        <span className="text-[9px] font-black text-ios-green bg-ios-green/5 px-2 py-1 rounded-md">확인 완료</span>
                       )}
                     </div>
-                    <span className="text-[11px] font-black text-ios-gray flex items-center gap-1.5">
-                      <Clock className="w-3 h-3" /> {notice.authorName}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] font-black text-ios-gray flex items-center gap-1.5">
+                        <Clock className="w-3 h-3" /> {notice.authorName}
+                      </span>
+                      {studentRole === 'teacher' && (
+                        <button 
+                          onClick={() => handleDelete(notice.id)}
+                          className="p-1 text-ios-red hover:bg-ios-red/10 rounded-lg transition-all"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               ))}

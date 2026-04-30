@@ -138,7 +138,7 @@ export default function TeacherControlCenter({ onSelectStudent }: { onSelectStud
                        <span className="text-[10px] font-medium text-ios-gray">{n.authorName} • {n.createdAt?.toDate ? n.createdAt.toDate().toLocaleDateString() : '방금 전'}</span>
                        {n.viewers && n.viewers.length > 0 && (
                          <span className="text-[9px] font-black text-ios-blue bg-ios-blue/5 px-1.5 py-0.5 rounded-md flex items-center gap-1">
-                           <ShieldCheck className="w-2.5 h-2.5" /> {n.viewers.length}명 확인함
+                           <ShieldCheck className="w-2.5 h-2.5" /> {n.viewers.length}번 읽음
                          </span>
                        )}
                     </div>

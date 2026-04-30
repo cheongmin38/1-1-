@@ -1,5 +1,6 @@
-// This file handles API calls to our Express backend which proxies Gemini requests.
-// This keeps the API key secure on the server and avoids browser environment issues.
+import { GoogleGenAI } from "@google/genai";
+
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 export async function summarizeNotice(rawText: string) {
   const prompt = `
@@ -15,22 +16,12 @@ export async function summarizeNotice(rawText: string) {
   `;
 
   try {
-    const response = await fetch('/api/gemini/generate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: "gemini-2.0-flash",
-        contents: [{ role: 'user', parts: [{ text: prompt }] }]
-      }),
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: [{ role: 'user', parts: [{ text: prompt }] }]
     });
 
-    if (!response.ok) {
-      const err = await response.json().catch(() => ({}));
-      throw new Error(err.error || 'Failed to summarize');
-    }
-
-    const result = await response.json();
-    return result.text || "요약에 실패했습니다.";
+    return response.text || "요약에 실패했습니다.";
   } catch (error) {
     console.error("Gemini Error:", error);
     throw error;
@@ -44,7 +35,7 @@ export async function refineNotice(noticeText: string) {
     
     [규칙]
     1. 말투는 친절하고 다정하게 (예: ~해요, ~해줘요)
-    2. 중요한 부분은 강조하거나 이모지를 적절히 사용
+    2. 중요한 부분은 강조하거나 이모지의 적절히 사용
     3. 구체적인 행동 강령이나 팁을 추가하여 꼼꼼하게 작성
     4. 너무 길지 않게 핵심을 짚어줄 것
     
@@ -53,22 +44,12 @@ export async function refineNotice(noticeText: string) {
   `;
 
   try {
-    const response = await fetch('/api/gemini/generate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: "gemini-2.0-flash",
-        contents: [{ role: 'user', parts: [{ text: prompt }] }]
-      }),
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: [{ role: 'user', parts: [{ text: prompt }] }]
     });
 
-    if (!response.ok) {
-      const err = await response.json().catch(() => ({}));
-      throw new Error(err.error || 'Failed to refine');
-    }
-
-    const result = await response.json();
-    return result.text || "공지 다듬기에 실패했습니다.";
+    return response.text || "공지 다듬기에 실패했습니다.";
   } catch (error) {
     console.error("Gemini Error:", error);
     throw error;

@@ -16,17 +16,19 @@ interface Notification {
   createdAt: any;
 }
 
-export default function Notifications({ onBack }: { onBack: () => void }) {
+export default function Notifications({ onBack, onNotificationClick }: { onBack: () => void, onNotificationClick?: (link?: string) => void }) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const studentId = localStorage.getItem('student_id') || 'unknown';
+  const studentRole = localStorage.getItem('student_role') || 'student';
+  const queryId = studentRole === 'teacher' ? 'teacher' : studentId;
 
   useEffect(() => {
-    if (!studentId) return;
+    if (!queryId || queryId === 'unknown') return;
 
     const q = query(
       collection(db, 'notifications'),
-      where('targetUserId', '==', studentId),
+      where('targetUserId', '==', queryId),
       orderBy('createdAt', 'desc')
     );
 
@@ -41,6 +43,15 @@ export default function Notifications({ onBack }: { onBack: () => void }) {
 
     return () => unsubscribe();
   }, [studentId]);
+
+  const handleNotificationClick = async (n: Notification) => {
+    if (!n.isRead) {
+      await markAsRead(n.id);
+    }
+    if (onNotificationClick) {
+      onNotificationClick(n.link);
+    }
+  };
 
   const markAsRead = async (id: string) => {
     try {
@@ -151,10 +162,10 @@ export default function Notifications({ onBack }: { onBack: () => void }) {
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, scale: 0.95 }}
                 className={cn(
-                  "ios-card relative flex gap-4 transition-all duration-300 overflow-hidden",
+                  "ios-card relative flex gap-4 transition-all duration-300 overflow-hidden cursor-pointer active:scale-[0.98]",
                   n.isRead ? "bg-white/60" : "bg-white shadow-xl shadow-black/[0.03] ring-1 ring-ios-blue/20"
                 )}
-                onClick={() => !n.isRead && markAsRead(n.id)}
+                onClick={() => handleNotificationClick(n)}
               >
                 {!n.isRead && <div className="absolute top-4 right-4 w-2 h-2 rounded-full bg-ios-blue" />}
                 <div className={cn(

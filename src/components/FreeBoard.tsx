@@ -25,6 +25,7 @@ interface Comment {
   isAnonymous: boolean;
   createdAt: any;
   likes?: number;
+  likedBy?: string[];
 }
 
 const CATEGORIES = [
@@ -36,7 +37,7 @@ const CATEGORIES = [
   { id: 'chat', label: '자유 소통', icon: Coffee },
 ];
 
-export default function FreeBoard() {
+export default function FreeBoard({ highlightPostId, onClearHighlight }: { highlightPostId?: string | null, onClearHighlight?: () => void }) {
   const [posts, setPosts] = useState<Post[]>([]);
   const [content, setContent] = useState('');
   const [isAnonymous, setIsAnonymous] = useState(true);
@@ -49,6 +50,27 @@ export default function FreeBoard() {
 
   const studentId = localStorage.getItem('student_id') || 'unknown';
   const studentName = localStorage.getItem('student_name') || '익명';
+  const studentRole = localStorage.getItem('student_role') || 'student';
+
+  const normalizeUserId = (id: string) => id === '0' ? 'teacher' : id;
+
+  useEffect(() => {
+    if (highlightPostId) {
+      // If there's a highlighted post, ensure it is visible by resetting filters
+      setFilter('all');
+      setSelectedPostId(highlightPostId);
+      
+      // Give some time for rendering
+      setTimeout(() => {
+        const element = document.getElementById(`post-${highlightPostId}`);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          // Clear highlight after scroll
+          if (onClearHighlight) onClearHighlight();
+        }
+      }, 500);
+    }
+  }, [highlightPostId, posts]);
 
   useEffect(() => {
     const q = query(collection(db, 'free_board'), orderBy('createdAt', 'desc'));
@@ -88,16 +110,19 @@ export default function FreeBoard() {
     }
   };
 
-  const sendNotification = async (targetUserId: string, title: string, body: string, type: 'comment' | 'like') => {
-    if (targetUserId === studentId) return;
+  const sendNotification = async (targetUserId: string, title: string, body: string, type: 'comment' | 'like', postId?: string) => {
+    const normalizedTarget = normalizeUserId(targetUserId);
+    const normalizedSelf = normalizeUserId(studentId);
+    if (normalizedTarget === normalizedSelf) return;
     try {
       await addDoc(collection(db, 'notifications'), {
-        targetUserId,
+        targetUserId: normalizedTarget,
         title,
         body,
         type,
         isRead: false,
         createdAt: serverTimestamp(),
+        link: postId ? `board:${postId}` : null
       });
     } catch (e) { console.error(e); }
   };
@@ -105,22 +130,27 @@ export default function FreeBoard() {
   const handleLike = async (post: Post) => {
     if ("vibrate" in navigator) navigator.vibrate(50);
     try {
+      const { arrayUnion } = await import('firebase/firestore');
       await updateDoc(doc(db, 'free_board', post.id), {
-        likes: increment(1)
+        likes: increment(1),
+        likedBy: arrayUnion(studentId)
       });
-      if (post.likes % 5 === 0) {
-        sendNotification(post.authorId, "내 글이 인기가 많아요!", `${post.content.substring(0, 20)}...`, 'like');
+      
+      if ((post.likes + 1) % 5 === 0) {
+        sendNotification(post.authorId, "내 글이 인기가 많아요!", `${post.content.substring(0, 20)}...`, 'like', post.id);
       }
     } catch (error) {
       console.error("Error liking post:", error);
     }
   };
 
-  const handleCommentLike = async (postId: string, commentId: string) => {
+  const handleCommentLike = async (postId: string, comment: Comment) => {
     if ("vibrate" in navigator) navigator.vibrate(50);
     try {
-      await updateDoc(doc(db, `free_board/${postId}/comments`, commentId), {
-        likes: increment(1)
+      const { arrayUnion } = await import('firebase/firestore');
+      await updateDoc(doc(db, `free_board/${postId}/comments`, comment.id), {
+        likes: increment(1),
+        likedBy: arrayUnion(studentId)
       });
     } catch (error) {
       console.error("Error liking comment:", error);
@@ -139,7 +169,7 @@ export default function FreeBoard() {
         createdAt: serverTimestamp(),
       });
       setCommentInputs(prev => ({ ...prev, [postId]: '' }));
-      sendNotification(postAuthorId, "새로운 댓글이 달렸어요!", `${postContent.substring(0, 20)}... 에 댓글이 달렸습니다.`, 'comment');
+      sendNotification(postAuthorId, "새로운 댓글이 달렸어요!", `${postContent.substring(0, 20)}... 에 댓글이 달렸습니다.`, 'comment', postId);
     } catch (e) { console.error(e); }
   };
 
@@ -272,11 +302,19 @@ export default function FreeBoard() {
           {filteredPosts.map((post) => (
             <motion.div
               key={post.id}
+              id={`post-${post.id}`}
               layout
               initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
+              animate={{ 
+                opacity: 1, 
+                y: 0,
+                backgroundColor: highlightPostId === post.id ? '#F2F2F7' : '#FFFFFF'
+              }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="ios-card p-5 bg-white border border-black/5 hover:border-black/10 transition-colors group"
+              className={cn(
+                "ios-card p-5 border border-black/5 hover:border-black/10 transition-all group",
+                highlightPostId === post.id && "ring-2 ring-ios-blue shadow-lg"
+              )}
             >
               <div className="flex justify-between items-start mb-3">
                 <div className="flex items-center gap-2">
@@ -324,9 +362,9 @@ export default function FreeBoard() {
                   >
                     <Heart className={cn(
                       "w-4 h-4 transition-all", 
-                      post.likes > 0 ? "fill-ios-red text-ios-red" : "group-hover/like:text-ios-red"
+                      post.likedBy?.includes(studentId) ? "fill-ios-red text-ios-red" : "group-hover/like:text-ios-red"
                     )} />
-                    <span className={cn("text-xs font-black", post.likes > 0 && "text-ios-red")}>{post.likes}</span>
+                    <span className={cn("text-xs font-black", post.likedBy?.includes(studentId) && "text-ios-red")}>{post.likes}</span>
                   </button>
 
                   <button 
@@ -377,11 +415,11 @@ export default function FreeBoard() {
                                   </span>
                                 </div>
                                 <button 
-                                  onClick={() => handleCommentLike(post.id, c.id)}
+                                  onClick={() => handleCommentLike(post.id, c)}
                                   className="flex items-center gap-1 text-ios-gray hover:text-ios-red transition-all active:scale-150"
                                 >
-                                  <Heart className={cn("w-3 h-3", (c.likes || 0) > 0 ? "fill-ios-red text-ios-red" : "")} />
-                                  <span className={cn("text-[10px] font-black", (c.likes || 0) > 0 && "text-ios-red")}>{c.likes || 0}</span>
+                                  <Heart className={cn("w-3 h-3", c.likedBy?.includes(studentId) ? "fill-ios-red text-ios-red" : "")} />
+                                  <span className={cn("text-[10px] font-black", c.likedBy?.includes(studentId) && "text-ios-red")}>{c.likes || 0}</span>
                                 </button>
                               </div>
                               <p className="text-[13px] text-[#1C1C1E] font-medium leading-relaxed">{c.content}</p>
