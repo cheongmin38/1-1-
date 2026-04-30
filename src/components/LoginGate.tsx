@@ -2,6 +2,7 @@ import { useState, useEffect, type ReactNode, type FormEvent } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Lock, ArrowRight, User, Sparkles } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
+import { STUDENT_LIST } from '@/src/constants/students';
 
 interface LoginGateProps {
   children: ReactNode;
@@ -12,6 +13,7 @@ export default function LoginGate({ children }: LoginGateProps) {
   const [studentNumber, setStudentNumber] = useState('');
   const [studentName, setStudentName] = useState('');
   const [error, setError] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('번호(1-32)와 이름을 정확히 입력해줘!');
 
   useEffect(() => {
     const saved = localStorage.getItem('classmate_auth');
@@ -22,11 +24,11 @@ export default function LoginGate({ children }: LoginGateProps) {
 
   const handleLogin = (e: FormEvent) => {
     e.preventDefault();
-    const num = parseInt(studentNumber);
+    const numStr = studentNumber.trim();
     const name = studentName.trim();
     
     // 선생님 전용 로그인 (비밀번호 0000 활용)
-    if (studentNumber === '0000') {
+    if (numStr === '0000') {
       localStorage.setItem('classmate_auth', 'true');
       localStorage.setItem('student_id', '0');
       localStorage.setItem('student_name', '김성연');
@@ -36,20 +38,27 @@ export default function LoginGate({ children }: LoginGateProps) {
       return;
     }
 
-    // 1번부터 32번까지만 접속 가능하며 이름이 입력되어야 함
-    if (num >= 1 && num <= 32 && name.length >= 1) {
-      let role = 'student';
-      if (num === 12) role = 'president';
-      if (num === 18) role = 'vice';
+    const num = parseInt(numStr);
+    
+    // 번호와 이름이 일치하는지 확인
+    if (!isNaN(num) && STUDENT_LIST[num]) {
+      const student = STUDENT_LIST[num];
       
-      localStorage.setItem('classmate_auth', 'true');
-      localStorage.setItem('student_id', num.toString());
-      localStorage.setItem('student_name', name);
-      localStorage.setItem('student_role', role);
-      
-      setIsAuthenticated(true);
-      setError(false);
+      // 이름이 일치하는지 확인 (공백 제거 후 비교)
+      if (student.name === name) {
+        localStorage.setItem('classmate_auth', 'true');
+        localStorage.setItem('student_id', num.toString());
+        localStorage.setItem('student_name', student.name);
+        localStorage.setItem('student_role', student.role);
+        
+        setIsAuthenticated(true);
+        setError(false);
+      } else {
+        setErrorMessage('이름이 번호와 일치하지 않아. 다시 확인해줘!');
+        setError(true);
+      }
     } else {
+      setErrorMessage('등록된 번호가 아니거나 입력이 잘못되었어!');
       setError(true);
     }
   };
@@ -140,7 +149,7 @@ export default function LoginGate({ children }: LoginGateProps) {
                 exit={{ opacity: 0, scale: 0.9 }}
                 className="text-ios-red text-[10px] text-center font-black uppercase tracking-widest"
               >
-                번호(1-32)와 이름을 정확히 입력해줘!
+                {errorMessage}
               </motion.p>
             )}
           </AnimatePresence>

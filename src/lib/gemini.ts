@@ -2,10 +2,18 @@ import { GoogleGenAI } from "@google/genai";
 
 // Use process.env.GEMINI_API_KEY which is injected by vite.config.ts
 const getApiKey = () => {
+  // Use the key provided by the user as a fallback
+  const FALLBACK_KEY = "AIzaSyDf9tuS7XopWVax7mQa5DF0tM18FAb2CFI";
+  
   try {
-    return process.env.GEMINI_API_KEY || (import.meta as any).env.VITE_GEMINI_API_KEY || "";
+    const key = process.env.GEMINI_API_KEY || (import.meta as any).env.VITE_GEMINI_API_KEY || FALLBACK_KEY;
+    // If the key is literally the string "undefined", return fallback
+    if (key === "undefined" || key === "null" || !key) return FALLBACK_KEY;
+    return key;
   } catch {
-    return (import.meta as any).env.VITE_GEMINI_API_KEY || "";
+    const key = (import.meta as any).env.VITE_GEMINI_API_KEY || FALLBACK_KEY;
+    if (key === "undefined" || key === "null" || !key) return FALLBACK_KEY;
+    return key;
   }
 };
 
@@ -17,13 +25,13 @@ export const getGenAI = () => {
     if (!key) {
       throw new Error("GEMINI_API_KEY is missing. Please set it in the environment.");
     }
-    genAIInstance = new GoogleGenAI(key);
+    genAIInstance = new GoogleGenAI({ apiKey: key });
   }
   return genAIInstance;
 };
 
 export async function summarizeNotice(rawText: string) {
-  const model = getGenAI().getGenerativeModel({ model: "gemini-1.5-flash" });
+  const ai = getGenAI();
 
   const prompt = `
     다음은 학급 공지사항입니다. 이를 '정보의 효율적 전달'을 목적으로 딱 3줄(혹은 4개 항목)으로 요약해주세요.
@@ -38,9 +46,11 @@ export async function summarizeNotice(rawText: string) {
   `;
 
   try {
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    return response.text() || "요약에 실패했습니다.";
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: prompt,
+    });
+    return response.text || "요약에 실패했습니다.";
   } catch (error) {
     console.error("Gemini Error:", error);
     throw error;
@@ -48,7 +58,7 @@ export async function summarizeNotice(rawText: string) {
 }
 
 export async function refineNotice(noticeText: string) {
-  const model = getGenAI().getGenerativeModel({ model: "gemini-1.5-flash" });
+  const ai = getGenAI();
 
   const prompt = `
     당신은 친절하고 꼼꼼한 학급 담임 선생님입니다. 
@@ -65,9 +75,11 @@ export async function refineNotice(noticeText: string) {
   `;
 
   try {
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    return response.text() || "공지 다듬기에 실패했습니다.";
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: prompt,
+    });
+    return response.text || "공지 다듬기에 실패했습니다.";
   } catch (error) {
     console.error("Gemini Error:", error);
     throw error;

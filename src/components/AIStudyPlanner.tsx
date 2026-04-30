@@ -87,30 +87,38 @@ export default function AIStudyPlanner() {
     `;
 
     try {
-      const model = getGenAI().getGenerativeModel({ 
-        model: "gemini-1.5-flash",
-        generationConfig: {
+      const ai = getGenAI();
+      const response = await ai.models.generateContent({ 
+        model: "gemini-3-flash-preview",
+        contents: prompt,
+        config: {
           responseMimeType: "application/json",
-          maxOutputTokens: 2000,
           temperature: 0.7,
         }
       });
 
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
-      const text = response.text();
+      const text = response.text;
 
       if (!text) {
-        throw new Error("Empty response from AI");
+        throw new Error("AI로부터 응답을 받지 못했습니다. (Empty Response)");
       }
 
       // Gemini sometimes includes markdown code blocks even with responseMimeType
       const cleanJson = text.replace(/```json/g, '').replace(/```/g, '').trim();
-      const planResult = JSON.parse(cleanJson);
-      setPlan(planResult);
+      try {
+        const planResult = JSON.parse(cleanJson);
+        setPlan(planResult);
+      } catch (parseError) {
+        console.error("JSON Parse Error:", text);
+        throw new Error("학습 계획의 형식이 올바르지 않습니다. (Invalid JSON)");
+      }
     } catch (error: any) {
-      console.error("AI Generation Error:", error);
-      alert(`학습 계획 생성 중 오류가 발생했습니다: ${error.message || '서버가 일시적으로 응답하지 않습니다.'}`);
+      console.error("AI Generation Detailed Error:", error);
+      const lowerMessage = error.message.toLowerCase();
+      const errorMessage = (lowerMessage.includes("api_key") || lowerMessage.includes("api key"))
+        ? "API 키가 설정되지 않았거나 올바르지 않습니다. 설정 메뉴에서 확인해주세요." 
+        : `학습 계획 생성 중 오류가 발생했습니다: ${error.message || '서버 응답 오류'}`;
+      alert(errorMessage);
     } finally {
       setIsGenerating(false);
     }

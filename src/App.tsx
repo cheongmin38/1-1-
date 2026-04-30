@@ -3,30 +3,34 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Settings, LogOut, Coffee, Info, LayoutDashboard, Utensils, Calendar, Sparkles, User, Bell, ChevronRight, Trophy } from 'lucide-react';
+import { Settings, LogOut, Coffee, Info, LayoutDashboard, Utensils, Calendar, Sparkles, User, Bell, ChevronRight, Trophy, MessageSquare } from 'lucide-react';
 import LoginGate from './components/LoginGate';
 import PresidentBanner from './components/PresidentBanner';
 import MealCard from './components/MealCard';
 import TimetableCard from './components/TimetableCard';
-import PlanCalendar from './components/PlanCalendar';
-import NoticeSummarizer from './components/NoticeSummarizer';
+import DashboardNotices from './components/DashboardNotices';
 import DDayCard from './components/DDayCard';
 import QuickLinks from './components/QuickLinks';
-import TeacherNoticeBoard from './components/TeacherNoticeBoard';
 import TeacherControlCenter from './components/TeacherControlCenter';
-import AIStudyPlanner from './components/AIStudyPlanner';
+import AIStudyChatbot from './components/AIStudyChatbot';
 import StudentProfile from './components/StudentProfile';
 import DailyIdiomCard from './components/DailyIdiomCard';
+import FreeBoard from './components/FreeBoard';
 import { cn } from './lib/utils';
-import { Brain, UserCircle } from 'lucide-react';
+import { Brain, UserCircle, Bot } from 'lucide-react';
 import { getDailyContent } from './lib/dailyContent';
 
-type TabType = 'dashboard' | 'meal' | 'planner' | 'timetable' | 'notice' | 'management' | 'profile';
+type TabType = 'dashboard' | 'meal' | 'chat' | 'timetable' | 'management' | 'profile' | 'board';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [activeTab]);
+
   const [presidentMessage] = useState("평택고 1-1 친구들, 내일 수행평가 잊지 말고 준비해오자! 화이팅! 🦅");
 
   const studentId = localStorage.getItem('student_id') || '0';
@@ -59,9 +63,9 @@ export default function App() {
   const tabs = [
     { id: 'dashboard', label: '대시보드', icon: LayoutDashboard },
     { id: 'meal', label: '급식', icon: Utensils },
-    { id: 'planner', label: 'AI 플래너', icon: Brain },
+    { id: 'board', label: '자유게시판', icon: MessageSquare },
+    { id: 'chat', label: 'AI 상담', icon: Bot },
     { id: 'timetable', label: '시간표', icon: Calendar },
-    { id: 'notice', label: '알림장', icon: Bell },
     { id: 'profile', label: '프로필', icon: UserCircle },
   ] as const;
 
@@ -71,7 +75,7 @@ export default function App() {
   ] as const;
 
   const currentTabs = studentRole === 'teacher' 
-    ? teacherTabs.filter(tab => tab.id !== 'planner') 
+    ? teacherTabs.filter(tab => tab.id !== 'chat') 
     : tabs;
 
   return (
@@ -108,18 +112,24 @@ export default function App() {
         </header>
 
         {/* Dynamic Content */}
-        <main className="flex-1 px-4 sm:px-8 pt-4 max-w-6xl mx-auto w-full">
-          <AnimatePresence mode="wait">
+        <main className={cn(
+          "flex-1 w-full flex flex-col transition-all duration-500",
+          activeTab === 'chat' ? "max-w-none px-0 pt-0" : "max-w-6xl mx-auto px-4 sm:px-8 pt-4"
+        )}>
+          <AnimatePresence mode="wait" initial={false}>
             <motion.div
               key={activeTab}
               initial={{ opacity: 0, y: 15, scale: 0.99 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -15, scale: 0.99 }}
               transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-              className="h-full"
+              className="flex-1 h-full flex flex-col"
             >
               {activeTab === 'dashboard' && (
                 <div className="flex flex-col gap-6">
+                  {/* Notice Section Integrated at Top */}
+                  <DashboardNotices />
+
                   {/* President Message & D-Day Banner */}
                   <PresidentBanner message={presidentMessage} />
 
@@ -135,15 +145,6 @@ export default function App() {
                      <div className="md:col-span-2"> 
                        <DailyIdiomCard />
                      </div>
-                  </div>
-
-                  {/* Notice Feed */}
-                  <div className="ios-card p-0 overflow-hidden ring-1 ring-black/[0.03]">
-                    <div className="p-6 border-b border-black/[0.03] flex items-center justify-between bg-white">
-                       <h3 className="text-sm font-black text-[#1C1C1E] uppercase tracking-widest">AI 알림 요약</h3>
-                       <div className="w-2 h-2 rounded-full bg-ios-blue animate-pulse" />
-                    </div>
-                    <NoticeSummarizer />
                   </div>
 
                   {/* Location & Weather Mini */}
@@ -183,14 +184,6 @@ export default function App() {
                     <h2 className="text-2xl font-black tracking-tight px-2">오늘의 시간표</h2>
                     <TimetableCard />
                   </div>
-                  
-                  <div className="flex flex-col gap-4">
-                    <div className="flex items-center justify-between px-2">
-                       <h2 className="text-2xl font-black tracking-tight">학급 일정 달력</h2>
-                       <div className="text-[10px] font-black text-ios-gray bg-white px-2 py-1 rounded-lg border border-black/5 uppercase tracking-widest">Plan & Events</div>
-                    </div>
-                    <PlanCalendar />
-                  </div>
 
                   <div className="ios-card border-dashed border-2 border-[#8E8E93]/20 flex items-center gap-4 text-[#8E8E93]">
                     <div className="p-3 bg-gray-100 rounded-2xl"> <Info className="w-5 h-5" /> </div>
@@ -199,20 +192,12 @@ export default function App() {
                 </div>
               )}
 
-              {activeTab === 'notice' && (
-                <div className="max-w-2xl mx-auto flex flex-col gap-6">
-                  <TeacherNoticeBoard />
-                  <div className="mt-6 border-t border-black/5 pt-8">
-                    <h2 className="text-2xl font-black tracking-tight mb-2 px-2">AI 알림 요약</h2>
-                    <NoticeSummarizer />
-                  </div>
-                </div>
+              {activeTab === 'chat' && (
+                <AIStudyChatbot />
               )}
 
-              {activeTab === 'planner' && (
-                <div className="max-w-4xl mx-auto w-full px-4">
-                  <AIStudyPlanner />
-                </div>
+              {activeTab === 'board' && (
+                <FreeBoard />
               )}
 
               {activeTab === 'profile' && (

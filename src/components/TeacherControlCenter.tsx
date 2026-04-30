@@ -4,6 +4,7 @@ import { Users, Trash2, Megaphone, ShieldCheck, ChevronRight, Ban, CheckCircle2,
 import { db } from '@/src/lib/firebase';
 import { collection, query, orderBy, onSnapshot, deleteDoc, doc, getDoc, setDoc } from 'firebase/firestore';
 import { cn } from '@/src/lib/utils';
+import { STUDENT_LIST } from '@/src/constants/students';
 
 interface Notice {
   id: string;
@@ -14,7 +15,7 @@ interface Notice {
 
 export default function TeacherControlCenter() {
   const [notices, setNotices] = useState<Notice[]>([]);
-  const [students] = useState(Array.from({ length: 32 }, (_, i) => ({ id: i + 1, name: `학생 ${i + 1}` })));
+  const [students] = useState(Object.values(STUDENT_LIST));
   const [authorizedStudent, setAuthorizedStudent] = useState('');
   const [isUpdating, setIsUpdating] = useState(false);
   
@@ -161,9 +162,12 @@ export default function TeacherControlCenter() {
           </div>
           <div className="ios-card grid grid-cols-4 sm:grid-cols-6 gap-2 max-h-[400px] overflow-y-auto no-scrollbar">
              {students.map((s) => (
-               <div key={s.id} className="aspect-square flex flex-col items-center justify-center bg-[#F2F2F7] rounded-2xl border border-black/[0.03] transition-all hover:scale-105 hover:bg-white hover:shadow-lg group cursor-pointer relative overflow-hidden">
-                 <span className="text-lg font-black text-[#1C1C1E]">{s.id}</span>
-                 <span className="text-[8px] font-black text-ios-gray uppercase opacity-0 group-hover:opacity-100 transition-all">Student</span>
+               <div key={s.number} className="aspect-square flex flex-col items-center justify-center bg-[#F2F2F7] rounded-2xl border border-black/[0.03] transition-all hover:scale-105 hover:bg-white hover:shadow-lg group cursor-pointer relative overflow-hidden">
+                 <span className="text-sm font-black text-[#1C1C1E]">{s.number}</span>
+                 <span className="text-[10px] font-bold text-[#1C1C1E] truncate w-full text-center px-1">{s.name}</span>
+                 <span className="text-[7px] font-black text-ios-gray uppercase opacity-0 group-hover:opacity-100 transition-all">
+                   {s.role === 'president' ? '반장' : s.role === 'vice' ? '부반장' : '학생'}
+                 </span>
                  <div className="absolute top-1 right-1 w-1.5 h-1.5 bg-green-500 rounded-full border border-white" />
                </div>
              ))}
