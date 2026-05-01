@@ -48,9 +48,9 @@ export default function FreeBoard({ highlightPostId, onClearHighlight }: { highl
   const [comments, setComments] = useState<Record<string, Comment[]>>({});
   const [commentInputs, setCommentInputs] = useState<Record<string, string>>({});
 
-  const studentId = localStorage.getItem('student_id') || 'unknown';
-  const studentName = localStorage.getItem('student_name') || '익명';
-  const studentRole = localStorage.getItem('student_role') || 'student';
+  const studentId = (localStorage.getItem('student_id') || 'unknown').trim();
+  const studentName = (localStorage.getItem('student_name') || '익명').trim();
+  const studentRole = (localStorage.getItem('student_role') || 'student').trim().toLowerCase();
   const isTeacher = studentRole === 'teacher' || studentId === '0' || studentName === '김성연';
 
   const normalizeUserId = (id: string) => id === '0' ? 'teacher' : id;
@@ -129,7 +129,10 @@ export default function FreeBoard({ highlightPostId, onClearHighlight }: { highl
   };
 
   const handleLike = async (post: Post) => {
-    if ("vibrate" in navigator) navigator.vibrate(50);
+    if ("vibrate" in navigator) {
+      try { navigator.vibrate(50); } catch (e) {}
+    }
+    // iOS and others get visual feedback regardless of vibration support
     try {
       const { arrayUnion } = await import('firebase/firestore');
       await updateDoc(doc(db, 'free_board', post.id), {
@@ -146,7 +149,9 @@ export default function FreeBoard({ highlightPostId, onClearHighlight }: { highl
   };
 
   const handleCommentLike = async (postId: string, comment: Comment) => {
-    if ("vibrate" in navigator) navigator.vibrate(50);
+    if ("vibrate" in navigator) {
+      try { navigator.vibrate(50); } catch (e) {}
+    }
     try {
       const { arrayUnion } = await import('firebase/firestore');
       await updateDoc(doc(db, `free_board/${postId}/comments`, comment.id), {
@@ -374,12 +379,17 @@ export default function FreeBoard({ highlightPostId, onClearHighlight }: { highl
                 <div className="flex items-center gap-4">
                   <button 
                     onClick={() => handleLike(post)}
-                    className="flex items-center gap-1.5 text-ios-gray hover:text-ios-red transition-all active:scale-125 group/like"
+                    className="flex items-center gap-1.5 text-ios-gray hover:text-ios-red transition-all active:scale-150 group/like"
                   >
-                    <Heart className={cn(
-                      "w-4 h-4 transition-all", 
-                      post.likedBy?.includes(studentId) ? "fill-ios-red text-ios-red" : "group-hover/like:text-ios-red"
-                    )} />
+                    <motion.div
+                      whileTap={{ scale: 1.8, rotate: [0, -15, 15, 0] }}
+                      className="flex items-center"
+                    >
+                      <Heart className={cn(
+                        "w-4 h-4 transition-all", 
+                        post.likedBy?.includes(studentId) ? "fill-ios-red text-ios-red" : "group-hover/like:text-ios-red"
+                      )} />
+                    </motion.div>
                     <span className={cn("text-xs font-black", post.likedBy?.includes(studentId) && "text-ios-red")}>{post.likes}</span>
                   </button>
 
@@ -395,7 +405,11 @@ export default function FreeBoard({ highlightPostId, onClearHighlight }: { highl
                 {(post.authorId === studentId || isTeacher) && (
                   <button 
                     onClick={() => handleDelete(post.id, post.authorId)}
-                    className="text-ios-gray hover:text-ios-red transition-all p-1"
+                    className={cn(
+                      "transition-all p-3 -m-2 flex items-center justify-center rounded-xl active:scale-95",
+                      isTeacher && post.authorId !== studentId ? "text-ios-red bg-ios-red/5" : "text-ios-gray hover:text-ios-red"
+                    )}
+                    aria-label="게시글 삭제"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -441,9 +455,12 @@ export default function FreeBoard({ highlightPostId, onClearHighlight }: { highl
                                   {(c.authorId === studentId || isTeacher) && (
                                     <button 
                                       onClick={() => handleCommentDelete(post.id, c.id, c.authorId)}
-                                      className="text-ios-gray hover:text-ios-red transition-all"
+                                      className={cn(
+                                        "transition-all p-2 -m-1 rounded-lg active:scale-90",
+                                        isTeacher && c.authorId !== studentId ? "text-ios-red bg-ios-red/10" : "text-ios-gray hover:text-ios-red"
+                                      )}
                                     >
-                                      <Trash2 className="w-3 h-3" />
+                                      <Trash2 className="w-3.5 h-3.5" />
                                     </button>
                                   )}
                                 </div>

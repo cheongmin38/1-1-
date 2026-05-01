@@ -22,9 +22,9 @@ export default function DashboardNotices() {
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [showAll, setShowAll] = useState(false);
-  const studentName = localStorage.getItem('student_name') || '익명';
-  const studentId = localStorage.getItem('student_id') || '';
-  const studentRole = localStorage.getItem('student_role') || 'student';
+  const studentName = (localStorage.getItem('student_name') || '익명').trim();
+  const studentId = (localStorage.getItem('student_id') || '').trim();
+  const studentRole = (localStorage.getItem('student_role') || 'student').trim().toLowerCase();
   const isTeacher = studentRole === 'teacher' || studentId === '0' || studentName === '김성연';
 
   useEffect(() => {
@@ -233,9 +233,10 @@ export default function DashboardNotices() {
                         {isTeacher && (
                           <button 
                             onClick={() => handleDelete(notice.id)}
-                            className="p-1.5 text-ios-red hover:bg-ios-red/10 rounded-lg transition-all"
+                            className="p-3 -m-1.5 text-ios-red bg-ios-red/5 hover:bg-ios-red/10 rounded-xl transition-all active:scale-95 flex items-center justify-center"
+                            aria-label="공지 삭제"
                           >
-                            <Trash2 className="w-3.5 h-3.5" />
+                            <Trash2 className="w-4 h-4" />
                           </button>
                         )}
                       </div>

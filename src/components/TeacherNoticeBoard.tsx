@@ -36,9 +36,9 @@ export default function TeacherNoticeBoard() {
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [showWhoSaw, setShowWhoSaw] = useState<string | null>(null);
   
-  const studentRole = localStorage.getItem('student_role');
-  const storedName = localStorage.getItem('student_name');
-  const studentNum = localStorage.getItem('student_id') || '';
+  const studentRole = (localStorage.getItem('student_role') || '').trim().toLowerCase();
+  const storedName = (localStorage.getItem('student_name') || '').trim();
+  const studentNum = (localStorage.getItem('student_id') || '').trim();
   
   // Explicitly check for 'teacher' role string or ID 0 or Name
   const isTeacher = studentRole === 'teacher' || studentNum === '0' || storedName === '김성연';
@@ -284,7 +284,7 @@ export default function TeacherNoticeBoard() {
                     { (isTeacher || studentNum === '0') && (
                       <button 
                         onClick={() => handleDelete(notice.id)}
-                        className="p-1.5 text-ios-red hover:bg-ios-red/10 rounded-xl transition-all"
+                        className="p-3 -m-1.5 text-ios-red bg-ios-red/5 hover:bg-ios-red/10 rounded-xl transition-all active:scale-90 flex items-center justify-center"
                         title="공지 삭제"
                       >
                         <Trash2 className="w-4 h-4" />
