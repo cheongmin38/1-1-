@@ -41,7 +41,7 @@ export default function TeacherNoticeBoard() {
   const studentNum = (localStorage.getItem('student_id') || '').trim();
   
   // Explicitly check for 'teacher' role string or ID 0 or Name
-  const isTeacher = studentRole === 'teacher' || studentNum === '0' || storedName === '김성연';
+  const isTeacher = studentRole === 'teacher' || studentNum === '0' || storedName === '김성연' || storedName === '선생님';
   const isAuthorizedStudent = studentNum === authorizedStudentNum;
   const canPost = isTeacher || isAuthorizedStudent;
   

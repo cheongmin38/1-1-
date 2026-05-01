@@ -51,7 +51,7 @@ export default function FreeBoard({ highlightPostId, onClearHighlight }: { highl
   const studentId = (localStorage.getItem('student_id') || 'unknown').trim();
   const studentName = (localStorage.getItem('student_name') || '익명').trim();
   const studentRole = (localStorage.getItem('student_role') || 'student').trim().toLowerCase();
-  const isTeacher = studentRole === 'teacher' || studentId === '0' || studentName === '김성연';
+  const isTeacher = studentRole === 'teacher' || studentId === '0' || studentName === '김성연' || studentName === '선생님';
 
   const normalizeUserId = (id: string) => id === '0' ? 'teacher' : id;
 
@@ -129,10 +129,7 @@ export default function FreeBoard({ highlightPostId, onClearHighlight }: { highl
   };
 
   const handleLike = async (post: Post) => {
-    if ("vibrate" in navigator) {
-      try { navigator.vibrate(50); } catch (e) {}
-    }
-    // iOS and others get visual feedback regardless of vibration support
+    // iOS doesn't support navigator.vibrate, so we rely on motion animations
     try {
       const { arrayUnion } = await import('firebase/firestore');
       await updateDoc(doc(db, 'free_board', post.id), {
@@ -149,9 +146,6 @@ export default function FreeBoard({ highlightPostId, onClearHighlight }: { highl
   };
 
   const handleCommentLike = async (postId: string, comment: Comment) => {
-    if ("vibrate" in navigator) {
-      try { navigator.vibrate(50); } catch (e) {}
-    }
     try {
       const { arrayUnion } = await import('firebase/firestore');
       await updateDoc(doc(db, `free_board/${postId}/comments`, comment.id), {
@@ -346,9 +340,14 @@ export default function FreeBoard({ highlightPostId, onClearHighlight }: { highl
                     {post.isAnonymous ? <User className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />}
                   </div>
                   <div className="flex flex-col">
-                    <span className="text-[13px] font-black leading-none">
-                      {post.isAnonymous ? '익명 학생' : post.authorName}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[13px] font-black leading-none">
+                        {post.isAnonymous ? '익명 학생' : post.authorName}
+                      </span>
+                      {post.authorId === '0' && (
+                        <span className="px-1.5 py-0.5 bg-ios-blue text-white text-[8px] font-black rounded uppercase">Teacher</span>
+                      )}
+                    </div>
                     <span className="text-[10px] text-ios-gray font-bold uppercase mt-0.5">
                       {post.createdAt?.toDate ? new Date(post.createdAt.toDate()).toLocaleString('ko-KR', { 
                         month: 'short', 
@@ -447,9 +446,11 @@ export default function FreeBoard({ highlightPostId, onClearHighlight }: { highl
                                 <div className="flex items-center gap-2">
                                   <button 
                                     onClick={() => handleCommentLike(post.id, c)}
-                                    className="flex items-center gap-1 text-ios-gray hover:text-ios-red transition-all active:scale-150"
+                                    className="flex items-center gap-1 text-ios-gray hover:text-ios-red transition-all active:scale-150 p-2 -m-2"
                                   >
-                                    <Heart className={cn("w-3 h-3", c.likedBy?.includes(studentId) ? "fill-ios-red text-ios-red" : "")} />
+                                    <motion.div whileTap={{ scale: 1.5 }}>
+                                      <Heart className={cn("w-3 h-3", c.likedBy?.includes(studentId) ? "fill-ios-red text-ios-red" : "")} />
+                                    </motion.div>
                                     <span className={cn("text-[10px] font-black", c.likedBy?.includes(studentId) && "text-ios-red")}>{c.likes || 0}</span>
                                   </button>
                                   {(c.authorId === studentId || isTeacher) && (

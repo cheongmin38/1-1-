@@ -25,7 +25,7 @@ export default function DashboardNotices() {
   const studentName = (localStorage.getItem('student_name') || '익명').trim();
   const studentId = (localStorage.getItem('student_id') || '').trim();
   const studentRole = (localStorage.getItem('student_role') || 'student').trim().toLowerCase();
-  const isTeacher = studentRole === 'teacher' || studentId === '0' || studentName === '김성연';
+  const isTeacher = studentRole === 'teacher' || studentId === '0' || studentName === '김성연' || studentName === '선생님';
 
   useEffect(() => {
     // Note: Removed orderBy from query to ensure notices with missing createdAt aren't filtered out by Firestore
