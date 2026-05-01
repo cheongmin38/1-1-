@@ -21,13 +21,26 @@ export default function TeacherControlCenter({ onSelectStudent }: { onSelectStud
   const [isUpdating, setIsUpdating] = useState(false);
   
   useEffect(() => {
-    const q = query(collection(db, 'notices'), orderBy('createdAt', 'desc'));
+    // Note: Removed orderBy from query to ensure notices with missing createdAt aren't filtered out by Firestore
+    const q = query(collection(db, 'notices'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const data = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       })) as Notice[];
-      setNotices(data);
+      
+      // Sort client-side with robust handling
+      const sorted = [...data].sort((a, b) => {
+        const getTime = (notice: Notice) => {
+          if (!notice.createdAt) return 0;
+          if (notice.createdAt.toMillis) return notice.createdAt.toMillis();
+          if (notice.createdAt.seconds) return notice.createdAt.seconds * 1000;
+          if (notice.createdAt instanceof Date) return notice.createdAt.getTime();
+          return 0;
+        };
+        return getTime(b) - getTime(a);
+      });
+      setNotices(sorted);
     });
 
     const configUnsubscribe = onSnapshot(doc(db, 'config', 'permissions'), (snapshot) => {

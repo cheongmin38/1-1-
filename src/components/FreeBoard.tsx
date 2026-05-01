@@ -51,6 +51,7 @@ export default function FreeBoard({ highlightPostId, onClearHighlight }: { highl
   const studentId = localStorage.getItem('student_id') || 'unknown';
   const studentName = localStorage.getItem('student_name') || '익명';
   const studentRole = localStorage.getItem('student_role') || 'student';
+  const isTeacher = studentRole === 'teacher' || studentId === '0' || studentName === '김성연';
 
   const normalizeUserId = (id: string) => id === '0' ? 'teacher' : id;
 
@@ -186,7 +187,7 @@ export default function FreeBoard({ highlightPostId, onClearHighlight }: { highl
   }, [selectedPostId]);
 
   const handleDelete = async (postId: string, authorId: string) => {
-    if (authorId !== studentId && studentId !== '0') {
+    if (authorId !== studentId && !isTeacher) {
       alert("직접 작성한 글만 삭제할 수 있습니다.");
       return;
     }
@@ -376,7 +377,7 @@ export default function FreeBoard({ highlightPostId, onClearHighlight }: { highl
                   </button>
                 </div>
 
-                {(post.authorId === studentId || studentId === '0') && (
+                {(post.authorId === studentId || isTeacher) && (
                   <button 
                     onClick={() => handleDelete(post.id, post.authorId)}
                     className="opacity-0 group-hover:opacity-100 text-ios-gray hover:text-ios-red transition-all p-1"
