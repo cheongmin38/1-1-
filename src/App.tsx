@@ -119,9 +119,9 @@ export default function App() {
     { id: 'dashboard', label: '대시보드', icon: LayoutDashboard },
     { id: 'notice', label: '알림장', icon: ClipboardList },
     { id: 'meal', label: '급식', icon: Utensils },
-    { id: 'board', label: '자유게시판', icon: MessageSquare },
-    { id: 'chat', label: 'AI 상담', icon: Bot },
     { id: 'timetable', label: '시간표', icon: Calendar },
+    { id: 'chat', label: 'AI 상담', icon: Bot },
+    { id: 'board', label: '자유게시판', icon: MessageSquare },
     { id: 'profile', label: '프로필', icon: UserCircle },
   ] as const;
 
