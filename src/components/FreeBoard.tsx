@@ -201,6 +201,21 @@ export default function FreeBoard({ highlightPostId, onClearHighlight }: { highl
     }
   };
 
+  const handleCommentDelete = async (postId: string, commentId: string, commentAuthorId: string) => {
+    if (commentAuthorId !== studentId && !isTeacher) {
+      alert("직접 작성한 댓글만 삭제할 수 있습니다.");
+      return;
+    }
+
+    if (window.confirm("정말로 이 댓글을 삭제하시겠습니까?")) {
+      try {
+        await deleteDoc(doc(db, `free_board/${postId}/comments`, commentId));
+      } catch (error) {
+        console.error("Error deleting comment:", error);
+      }
+    }
+  };
+
   const filteredPosts = filter === 'all' 
     ? posts 
     : filter === 'popular'
@@ -380,7 +395,7 @@ export default function FreeBoard({ highlightPostId, onClearHighlight }: { highl
                 {(post.authorId === studentId || isTeacher) && (
                   <button 
                     onClick={() => handleDelete(post.id, post.authorId)}
-                    className="opacity-0 group-hover:opacity-100 text-ios-gray hover:text-ios-red transition-all p-1"
+                    className="text-ios-gray hover:text-ios-red transition-all p-1"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -415,13 +430,23 @@ export default function FreeBoard({ highlightPostId, onClearHighlight }: { highl
                                     {c.createdAt?.toDate ? new Date(c.createdAt.toDate()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
                                   </span>
                                 </div>
-                                <button 
-                                  onClick={() => handleCommentLike(post.id, c)}
-                                  className="flex items-center gap-1 text-ios-gray hover:text-ios-red transition-all active:scale-150"
-                                >
-                                  <Heart className={cn("w-3 h-3", c.likedBy?.includes(studentId) ? "fill-ios-red text-ios-red" : "")} />
-                                  <span className={cn("text-[10px] font-black", c.likedBy?.includes(studentId) && "text-ios-red")}>{c.likes || 0}</span>
-                                </button>
+                                <div className="flex items-center gap-2">
+                                  <button 
+                                    onClick={() => handleCommentLike(post.id, c)}
+                                    className="flex items-center gap-1 text-ios-gray hover:text-ios-red transition-all active:scale-150"
+                                  >
+                                    <Heart className={cn("w-3 h-3", c.likedBy?.includes(studentId) ? "fill-ios-red text-ios-red" : "")} />
+                                    <span className={cn("text-[10px] font-black", c.likedBy?.includes(studentId) && "text-ios-red")}>{c.likes || 0}</span>
+                                  </button>
+                                  {(c.authorId === studentId || isTeacher) && (
+                                    <button 
+                                      onClick={() => handleCommentDelete(post.id, c.id, c.authorId)}
+                                      className="text-ios-gray hover:text-ios-red transition-all"
+                                    >
+                                      <Trash2 className="w-3 h-3" />
+                                    </button>
+                                  )}
+                                </div>
                               </div>
                               <p className="text-[13px] text-[#1C1C1E] font-medium leading-relaxed">{c.content}</p>
                             </div>

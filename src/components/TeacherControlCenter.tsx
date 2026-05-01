@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Users, Trash2, Megaphone, ShieldCheck, ChevronRight, Ban, CheckCircle2, AlertCircle, Clock, Coffee, ShieldAlert, Key } from 'lucide-react';
+import { Users, Trash2, Megaphone, MessageSquare, ShieldCheck, ChevronRight, Ban, CheckCircle2, AlertCircle, Clock, Coffee, ShieldAlert, Key } from 'lucide-react';
 import { db } from '@/src/lib/firebase';
 import { collection, query, orderBy, onSnapshot, deleteDoc, doc, getDoc, setDoc } from 'firebase/firestore';
 import { cn } from '@/src/lib/utils';
@@ -16,20 +16,16 @@ interface Notice {
 
 export default function TeacherControlCenter({ onSelectStudent }: { onSelectStudent?: (id: string) => void }) {
   const [notices, setNotices] = useState<Notice[]>([]);
+  const [freePosts, setFreePosts] = useState<any[]>([]);
   const [students] = useState(Object.values(STUDENT_LIST));
   const [authorizedStudent, setAuthorizedStudent] = useState('');
   const [isUpdating, setIsUpdating] = useState(false);
   
   useEffect(() => {
-    // Note: Removed orderBy from query to ensure notices with missing createdAt aren't filtered out by Firestore
-    const q = query(collection(db, 'notices'));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as Notice[];
-      
-      // Sort client-side with robust handling
+    // Notices listener
+    const qNotices = query(collection(db, 'notices'));
+    const unsubNotices = onSnapshot(qNotices, (snapshot) => {
+      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Notice[];
       const sorted = [...data].sort((a, b) => {
         const getTime = (notice: Notice) => {
           if (!notice.createdAt) return 0;
@@ -43,6 +39,13 @@ export default function TeacherControlCenter({ onSelectStudent }: { onSelectStud
       setNotices(sorted);
     });
 
+    // Free Board listener
+    const qFree = query(collection(db, 'free_board'), orderBy('createdAt', 'desc'));
+    const unsubFree = onSnapshot(qFree, (snapshot) => {
+      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setFreePosts(data);
+    });
+
     const configUnsubscribe = onSnapshot(doc(db, 'config', 'permissions'), (snapshot) => {
       if (snapshot.exists()) {
         setAuthorizedStudent(snapshot.data().authorizedStudentNumber || '');
@@ -50,7 +53,8 @@ export default function TeacherControlCenter({ onSelectStudent }: { onSelectStud
     });
 
     return () => {
-      unsubscribe();
+      unsubNotices();
+      unsubFree();
       configUnsubscribe();
     };
   }, []);
@@ -76,7 +80,17 @@ export default function TeacherControlCenter({ onSelectStudent }: { onSelectStud
       await deleteDoc(doc(db, 'notices', id));
     } catch (err) {
       console.error(err);
-      alert('삭제 권한이 없거나 오류가 발생했습니다.');
+      alert('삭제 중 오류가 발생했습니다.');
+    }
+  };
+
+  const handleDeleteFreePost = async (id: string) => {
+    if (!confirm('이 자유게시판 글을 삭제할까요?')) return;
+    try {
+      await deleteDoc(doc(db, 'free_board', id));
+    } catch (err) {
+      console.error(err);
+      alert('삭제 중 오류가 발생했습니다.');
     }
   };
 
@@ -93,7 +107,7 @@ export default function TeacherControlCenter({ onSelectStudent }: { onSelectStud
             <span className="text-[10px] font-bold text-ios-gray uppercase tracking-widest">System Control Center</span>
           </div>
           <h2 className="text-3xl font-[900] tracking-tight mb-1">우리 반 관리 도구</h2>
-          <p className="text-ios-gray text-sm font-medium">선생님 전용 중앙 제어판입니다. 학생 활동 및 공지를 관리하세요.</p>
+          <p className="text-ios-gray text-sm font-medium">선생님 전용 중앙 제어판입니다. 학생 활동 및 게시물을 관리하세요.</p>
         </div>
       </div>
 
@@ -124,79 +138,103 @@ export default function TeacherControlCenter({ onSelectStudent }: { onSelectStud
             {isUpdating ? '저장 중...' : '권한 부여'}
           </button>
         </div>
-        <p className="mt-3 text-[11px] font-bold text-ios-gray">
-          * 지정된 번호의 학생은 '알림장' 탭에서 수행평가 관련 공지를 작성할 수 있게 됩니다.
-        </p>
       </div>
 
-      {/* Grid Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        
-        {/* Notice Management */}
-        <div className="flex flex-col gap-4">
-          <div className="flex items-center justify-between px-2">
-            <h3 className="text-lg font-black tracking-tight flex items-center gap-2">
-              <Megaphone className="w-5 h-5 text-ios-blue" />
-              게시된 공지 관리
-            </h3>
-            <span className="text-[10px] font-black text-ios-gray uppercase">{notices.length} TOTAL</span>
-          </div>
-          <div className="ios-card space-y-3 max-h-[400px] overflow-y-auto no-scrollbar">
-            {notices.length > 0 ? (
-              notices.map((n) => (
-                <div key={n.id} className="flex items-center justify-between p-3 bg-[#F2F2F7] rounded-2xl group transition-all hover:bg-white hover:shadow-sm border border-transparent hover:border-black/[0.05]">
-                  <div className="flex flex-col gap-1 pr-4 flex-1">
-                    <p className="text-sm font-bold text-[#1C1C1E] line-clamp-1">{n.content}</p>
-                    <div className="flex items-center gap-2">
-                       <span className="text-[10px] font-medium text-ios-gray">{n.authorName} • {n.createdAt?.toDate ? n.createdAt.toDate().toLocaleDateString() : '방금 전'}</span>
-                       {n.viewers && n.viewers.length > 0 && (
-                         <span className="text-[9px] font-black text-ios-blue bg-ios-blue/5 px-1.5 py-0.5 rounded-md flex items-center gap-1">
-                           <ShieldCheck className="w-2.5 h-2.5" /> {n.viewers.length}번 읽음
-                         </span>
-                       )}
-                    </div>
-                  </div>
-                  <button 
-                    onClick={() => handleDeleteNotice(n.id)}
-                    className="p-2 text-ios-red opacity-0 group-hover:opacity-100 transition-all hover:bg-ios-red/10 rounded-xl"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              ))
-            ) : (
-              <p className="text-center py-10 text-sm font-bold text-ios-gray">관리할 공지가 없습니다.</p>
-            )}
-          </div>
+      {/* Notice Management */}
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center justify-between px-2">
+          <h3 className="text-lg font-black tracking-tight flex items-center gap-2">
+            <Megaphone className="w-5 h-5 text-ios-blue" />
+            게시된 공지 관리
+          </h3>
+          <span className="text-[10px] font-black text-ios-gray uppercase">{notices.length} TOTAL</span>
         </div>
+        <div className="ios-card space-y-3 max-h-[300px] overflow-y-auto no-scrollbar">
+          {notices.length > 0 ? (
+            notices.map((n) => (
+              <div key={n.id} className="flex items-center justify-between p-3 bg-[#F2F2F7] rounded-2xl group transition-all hover:bg-white hover:shadow-sm border border-transparent hover:border-black/[0.05]">
+                <div className="flex flex-col gap-1 pr-4 flex-1">
+                  <p className="text-sm font-bold text-[#1C1C1E] line-clamp-1">{n.content}</p>
+                  <div className="flex items-center gap-2 text-ios-gray text-[10px]">
+                     <span className="font-medium">{n.authorName}</span>
+                     {n.viewers && n.viewers.length > 0 && (
+                       <span className="text-ios-blue font-black flex items-center gap-1">
+                         • {n.viewers.length}명 읽음
+                       </span>
+                     )}
+                  </div>
+                </div>
+                <button 
+                  onClick={() => handleDeleteNotice(n.id)}
+                  className="p-2 text-ios-red hover:bg-ios-red/10 rounded-xl transition-all"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            ))
+          ) : (
+            <p className="text-center py-6 text-sm font-bold text-ios-gray">관리할 공지가 없습니다.</p>
+          )}
+        </div>
+      </div>
 
-        {/* Attendance / Student Quick View */}
-        <div className="flex flex-col gap-4">
-          <div className="flex items-center justify-between px-2">
-            <h3 className="text-lg font-black tracking-tight flex items-center gap-2">
-              <Users className="w-5 h-5 text-ios-blue" />
-              학생 명렬표 (1~32)
-            </h3>
-            <div className="flex gap-1.5">
-               <span className="px-2 py-0.5 bg-green-500/10 text-green-600 text-[8px] font-black rounded uppercase">32 Active</span>
-            </div>
-          </div>
-          <div className="ios-card grid grid-cols-4 sm:grid-cols-6 gap-2 max-h-[400px] overflow-y-auto no-scrollbar">
-             {students.map((s) => (
-               <div 
-                 key={s.number} 
-                 onClick={() => onSelectStudent?.(s.number.toString())}
-                 className="aspect-square flex flex-col items-center justify-center bg-[#F2F2F7] rounded-2xl border border-black/[0.03] transition-all hover:scale-105 hover:bg-white hover:shadow-lg group cursor-pointer relative overflow-hidden"
-               >
-                 <span className="text-sm font-black text-[#1C1C1E]">{s.number}</span>
-                 <span className="text-[10px] font-bold text-[#1C1C1E] truncate w-full text-center px-1">{s.name}</span>
-                 <span className="text-[7px] font-black text-ios-gray uppercase opacity-0 group-hover:opacity-100 transition-all">
-                   {s.role === 'president' ? '반장' : s.role === 'vice' ? '부반장' : '학생'}
-                 </span>
-                 <div className="absolute top-1 right-1 w-1.5 h-1.5 bg-green-500 rounded-full border border-white" />
-               </div>
-             ))}
-          </div>
+      {/* Free Board Management */}
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center justify-between px-2">
+          <h3 className="text-lg font-black tracking-tight flex items-center gap-2">
+            <MessageSquare className="w-5 h-5 text-ios-orange" />
+            자유게시판 게시물 관리
+          </h3>
+          <span className="text-[10px] font-black text-ios-gray uppercase">{freePosts.length} POSTS</span>
+        </div>
+        <div className="ios-card space-y-3 max-h-[300px] overflow-y-auto no-scrollbar border-ios-orange/10">
+          {freePosts.length > 0 ? (
+            freePosts.map((p) => (
+              <div key={p.id} className="flex items-center justify-between p-3 bg-[#F2F2F7] rounded-2xl group transition-all hover:bg-white hover:shadow-sm border border-transparent hover:border-black/[0.05]">
+                <div className="flex flex-col gap-1 pr-4 flex-1">
+                  <p className="text-sm font-bold text-[#1C1C1E] line-clamp-1">{p.content}</p>
+                  <div className="flex items-center gap-2 text-ios-gray text-[10px]">
+                     <span className="font-medium">{p.isAnonymous ? '익명' : p.authorName}</span>
+                     <span className="text-ios-orange font-black">• 🔥 {p.likes || 0}</span>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => handleDeleteFreePost(p.id)}
+                  className="p-2 text-ios-red hover:bg-ios-red/10 rounded-xl transition-all"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            ))
+          ) : (
+            <p className="text-center py-6 text-sm font-bold text-ios-gray">게시물이 없습니다.</p>
+          )}
+        </div>
+      </div>
+
+      {/* Student List */}
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center justify-between px-2">
+          <h3 className="text-lg font-black tracking-tight flex items-center gap-2">
+            <Users className="w-5 h-5 text-ios-green" />
+            학생 명렬표 (1~32)
+          </h3>
+        </div>
+        <div className="ios-card grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-8 gap-2">
+           {students.map((s) => (
+             <div 
+               key={s.number} 
+               onClick={() => onSelectStudent?.(s.number.toString())}
+               className="aspect-square flex flex-col items-center justify-center bg-[#F2F2F7] rounded-2xl border border-black/[0.03] transition-all hover:scale-105 hover:bg-white hover:shadow-lg group cursor-pointer relative overflow-hidden"
+             >
+               <span className="text-sm font-black text-[#1C1C1E]">{s.number}</span>
+               <span className="text-[10px] font-bold text-[#1C1C1E] truncate w-full text-center px-1">{s.name}</span>
+               <span className="text-[7px] font-black text-ios-gray uppercase opacity-0 group-hover:opacity-100 transition-all">
+                 {s.role === 'president' ? '반장' : s.role === 'vice' ? '부반장' : '학생'}
+               </span>
+               <div className="absolute top-1 right-1 w-1 h-1 bg-ios-green rounded-full shadow-[0_0_5px_rgba(40,205,65,0.5)]" />
+             </div>
+           ))}
         </div>
       </div>
     </div>
