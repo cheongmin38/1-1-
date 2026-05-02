@@ -1,12 +1,12 @@
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
-const ai = new GoogleGenAI({ 
-  apiKey: (process.env.GEMINI_API_KEY || '').trim() 
-});
-
-const DEFAULT_MODEL = "gemini-3-flash-preview";
+const API_KEY = (import.meta.env.VITE_GEMINI_API_KEY || "").trim();
+const genAI = API_KEY ? new GoogleGenerativeAI(API_KEY) : null;
 
 export async function summarizeNotice(rawText: string) {
+  if (!genAI) throw new Error("API_KEY_MISSING");
+  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
   const prompt = `
     다음은 학급 공지사항입니다. 이를 '정보의 효율적 전달'을 목적으로 딱 3줄(혹은 4개 항목)으로 요약해주세요.
     반드시 다음 형식을 지켜주세요:
@@ -20,12 +20,8 @@ export async function summarizeNotice(rawText: string) {
   `;
 
   try {
-    const response = await ai.models.generateContent({
-      model: DEFAULT_MODEL,
-      contents: [{ role: 'user', parts: [{ text: prompt }] }]
-    });
-
-    return response.text || "요약에 실패했습니다.";
+    const result = await model.generateContent(prompt);
+    return result.response.text() || "요약에 실패했습니다.";
   } catch (error) {
     console.error("Gemini Error:", error);
     throw error;
@@ -33,6 +29,9 @@ export async function summarizeNotice(rawText: string) {
 }
 
 export async function refineNotice(noticeText: string) {
+  if (!genAI) throw new Error("API_KEY_MISSING");
+  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
   const prompt = `
     당신은 친절하고 꼼꼼한 학급 담임 선생님입니다. 
     선생님이 대충 적은 공지사항 초안을 바탕으로, 학생들이 이해하기 쉽고 꼼꼼하게 다듬어진 공지사항을 작성해주세요.
@@ -48,15 +47,10 @@ export async function refineNotice(noticeText: string) {
   `;
 
   try {
-    const response = await ai.models.generateContent({
-      model: DEFAULT_MODEL,
-      contents: [{ role: 'user', parts: [{ text: prompt }] }]
-    });
-
-    return response.text || "공지 다듬기에 실패했습니다.";
+    const result = await model.generateContent(prompt);
+    return result.response.text() || "공지 다듬기에 실패했습니다.";
   } catch (error) {
     console.error("Gemini Error:", error);
     throw error;
   }
 }
-

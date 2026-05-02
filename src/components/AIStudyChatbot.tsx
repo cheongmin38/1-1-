@@ -4,13 +4,6 @@ import { Bot, Send, User, Loader2, Sparkles, Brain, Save, Trash2, History, Chevr
 import { db } from '@/src/lib/firebase';
 import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, deleteDoc, doc, limit, setDoc } from 'firebase/firestore';
 import { cn } from '@/src/lib/utils';
-import { GoogleGenAI } from "@google/genai";
-
-const ai = new GoogleGenAI({ 
-  apiKey: (process.env.GEMINI_API_KEY || '').trim() 
-});
-
-const DEFAULT_MODEL = "gemini-3-flash-preview";
 
 interface Message {
   id?: string;
@@ -52,6 +45,11 @@ const PERSONAS: Record<PersonaType, { title: string; desc: string; icon: any; co
   }
 };
 
+
+import { GoogleGenerativeAI } from "@google/generative-ai";
+
+const API_KEY = (import.meta.env.VITE_GEMINI_API_KEY || "").trim();
+const genAI = API_KEY ? new GoogleGenerativeAI(API_KEY) : null;
 
 export default function AIStudyChatbot() {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -139,35 +137,34 @@ export default function AIStudyChatbot() {
       await saveChatSession(updatedMessages, persona);
 
       try {
-        // Format history for GoogleGenAI SDK
-        const history = messages.map(m => ({
-          role: m.role === 'user' ? 'user' : 'model',
-          parts: [{ text: m.content }],
-        }));
-
-        const response = await ai.models.generateContentStream({
-          model: DEFAULT_MODEL,
-          contents: [
-            ...history,
-            { role: 'user', parts: [{ text: userMessage.content }] }
-          ],
-          config: {
-            systemInstruction: `당신은 ${studentName} 학생을 위한 똑똑한 AI 공부 챗봇 '클래스메이트 AI'입니다.
-              현재 당신의 성격 유형은 '${PERSONAS[persona].title}'입니다.
-              
-              [유형별 지침]
-              ${PERSONAS[persona].instruction}
-              
-              [공통 지침]
-              1. 학생이 학습 계획을 요청하면 반드시 다음 마크다운 형식을 포함해주세요:
-                 ### [계획 제목]
-                 (계획 내용 설명...)
-                 이후 하단에 학생이 저장할 수 있도록 "✨ 이 계획이 마음에 드시나요? 저장 버튼을 눌러보세요!" 라고 안내하세요.
-              2. 단순한 답변보다는 학생이 실천할 수 있는 구체적인 행동 요령을 제시하세요.
-              3. 한국어로 자연스럽게 답변하세요.`,
-          }
+        if (!genAI) throw new Error('API_KEY_MISSING');
+        const model = genAI.getGenerativeModel({ 
+          model: "gemini-1.5-flash",
+          systemInstruction: `당신은 ${studentName} 학생을 위한 똑똑한 AI 공부 챗봇 '클래스메이트 AI'입니다.
+            현재 당신의 성격 유형은 '${PERSONAS[persona].title}'입니다.
+            
+            [유형별 지침]
+            ${PERSONAS[persona].instruction}
+            
+            [공통 지침]
+            1. 학생이 학습 계획을 요청하면 반드시 다음 마크다운 형식을 포함해주세요:
+               ### [계획 제목]
+               (계획 내용 설명...)
+               이후 하단에 학생이 저장할 수 있도록 "✨ 이 계획이 마음에 드시나요? 저장 버튼을 눌러보세요!" 라고 안내하세요.
+            2. 단순한 답변보다는 학생이 실천할 수 있는 구체적인 행동 요령을 제시하세요.
+            3. 한국어로 자연스럽게 답변하세요.`,
         });
 
+        // Format history for GoogleGenerativeAI SDK
+        const chat = model.startChat({
+          history: messages.map(m => ({
+            role: m.role === 'user' ? 'user' : 'model',
+            parts: [{ text: m.content }],
+          })),
+        });
+
+        const result = await chat.sendMessageStream(userMessage.content);
+      
         let fullText = "";
         
         // Add initial empty assistant message to be filled
@@ -179,9 +176,10 @@ export default function AIStudyChatbot() {
         
         setMessages(prev => [...prev, initialAssistantMessage]);
 
-        for await (const chunk of response) {
-          if (chunk.text) {
-            fullText += chunk.text;
+        for await (const chunk of result.stream) {
+          const chunkText = chunk.text();
+          if (chunkText) {
+            fullText += chunkText;
             setMessages(prev => {
               const newMessages = [...prev];
               if (newMessages.length > 0) {
@@ -195,19 +193,22 @@ export default function AIStudyChatbot() {
           }
         }
 
-      // After streaming is complete, save the final state to Firestore
-      const finalAssistantMessage: Message = {
-        role: 'assistant',
-        content: fullText,
-        timestamp: new Date().toISOString(),
-      };
-      await saveChatSession([...updatedMessages, finalAssistantMessage], persona);
+        // After streaming is complete, save the final state to Firestore
+        const finalAssistantMessage: Message = {
+          role: 'assistant',
+          content: fullText,
+          timestamp: new Date().toISOString(),
+        };
+        await saveChatSession([...updatedMessages, finalAssistantMessage], persona);
 
     } catch (error: any) {
       console.error("Chat Error:", error);
+      const isKeyMissing = error.message === 'API_KEY_MISSING';
       const errorMessage: Message = {
         role: 'assistant',
-        content: `죄송해요, 응답을 생성하는 중에 오류가 발생했어요. (${error.message})`,
+        content: isKeyMissing 
+          ? '죄송해요, AI 기능을 사용하려면 Vercel 환경 변수에 VITE_GEMINI_API_KEY를 설정해야 해요. (Settings > Environment Variables에서 추가해주세요)'
+          : `죄송해요, 응답을 생성하는 중에 오류가 발생했어요. (${error.message})`,
         timestamp: new Date().toISOString(),
       };
       setMessages(prev => [...prev.slice(0, -1), errorMessage]);

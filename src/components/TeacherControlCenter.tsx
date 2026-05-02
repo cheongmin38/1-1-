@@ -166,9 +166,9 @@ export default function TeacherControlCenter({ onSelectStudent }: { onSelectStud
                 </div>
                 <button 
                   onClick={() => handleDeleteNotice(n.id)}
-                  className="p-2 text-ios-red hover:bg-ios-red/10 rounded-xl transition-all"
+                  className="p-3 -m-1.5 text-ios-red bg-ios-red/10 hover:bg-ios-red/20 rounded-xl transition-all active:scale-90"
                 >
-                  <Trash2 className="w-4 h-4" />
+                  <Trash2 className="w-5 h-5" />
                 </button>
               </div>
             ))
@@ -200,9 +200,9 @@ export default function TeacherControlCenter({ onSelectStudent }: { onSelectStud
                 </div>
                 <button 
                   onClick={() => handleDeleteFreePost(p.id)}
-                  className="p-2 text-ios-red hover:bg-ios-red/10 rounded-xl transition-all"
+                  className="p-3 -m-1.5 text-ios-red bg-ios-red/10 hover:bg-ios-red/20 rounded-xl transition-all active:scale-90"
                 >
-                  <Trash2 className="w-4 h-4" />
+                  <Trash2 className="w-5 h-5" />
                 </button>
               </div>
             ))

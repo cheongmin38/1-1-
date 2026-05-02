@@ -4,13 +4,6 @@ import { Brain, Sparkles, Loader2, ChevronRight, Target, BookOpen, BarChart3, Cl
 import { cn } from '@/src/lib/utils';
 import { db } from '@/src/lib/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { GoogleGenAI } from "@google/genai";
-
-const ai = new GoogleGenAI({ 
-  apiKey: (process.env.GEMINI_API_KEY || '').trim() 
-});
-
-const DEFAULT_MODEL = "gemini-3-flash-preview";
 
 interface StudyPlanStep {
   day: string;
@@ -24,6 +17,11 @@ interface GeneratedPlan {
   steps: StudyPlanStep[];
   tips: string[];
 }
+
+import { GoogleGenerativeAI } from "@google/generative-ai";
+
+const API_KEY = (import.meta.env.VITE_GEMINI_API_KEY || "").trim();
+const genAI = API_KEY ? new GoogleGenerativeAI(API_KEY) : null;
 
 export default function AIStudyPlanner() {
   const studentId = localStorage.getItem('student_id') || '0';
@@ -93,16 +91,18 @@ export default function AIStudyPlanner() {
     `;
 
     try {
-      const response = await ai.models.generateContent({
-        model: DEFAULT_MODEL,
+      if (!genAI) throw new Error('API_KEY_MISSING');
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+      const result = await model.generateContent({
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        config: {
+        generationConfig: {
           responseMimeType: "application/json",
           temperature: 0.7,
         }
       });
 
-      const text = response.text;
+      const text = result.response.text();
 
       if (!text) {
         throw new Error("AI로부터 응답을 받지 못했습니다. (Empty Response)");
@@ -120,8 +120,9 @@ export default function AIStudyPlanner() {
     } catch (error: any) {
       console.error("AI Generation Detailed Error:", error);
       const lowerMessage = error.message.toLowerCase();
-      const errorMessage = (lowerMessage.includes("api_key") || lowerMessage.includes("api key"))
-        ? "API 키가 설정되지 않았거나 올바르지 않습니다. 설정 메뉴에서 확인해주세요." 
+      const isKeyMissing = error.message === 'API_KEY_MISSING' || lowerMessage.includes("api_key") || lowerMessage.includes("api key");
+      const errorMessage = isKeyMissing
+        ? "AI 기능을 사용하려면 Vercel 환경 변수에 VITE_GEMINI_API_KEY를 설정해야 해요. (Settings > Environment Variables)" 
         : `학습 계획 생성 중 오류가 발생했습니다: ${error.message || '서버 응답 오류'}`;
       alert(errorMessage);
     } finally {
