@@ -10,15 +10,26 @@ interface DDay {
 }
 
 export default function DDayCard() {
-  const [days, setDays] = useState<DDay[]>([
-    { label: '1학기 중간고사', date: '2026-04-27', color: 'bg-ios-red' },
-    { label: '1학기 기말고사', date: '2026-07-01', color: 'bg-ios-orange' },
+  const [days] = useState<DDay[]>([
+    { label: '어린이날 (휴교)', date: '2026-05-05', color: 'bg-ios-orange' },
+    { label: '스승의 날', date: '2026-05-15', color: 'bg-ios-blue' },
+    { label: '부처님 오신 날', date: '2026-05-24', color: 'bg-ios-orange' },
+    { label: '6월 모의고사', date: '2026-06-04', color: 'bg-ios-red' },
+    { label: '현충일', date: '2026-06-06', color: 'bg-ios-blue' },
+    { label: '1학기 기말고사', date: '2026-06-29', color: 'bg-ios-red' },
     { label: '여름방학 시작', date: '2026-07-17', color: 'bg-ios-blue' },
   ]);
 
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const upcomingDays = days.filter(d => {
+    const target = new Date(d.date);
+    target.setHours(0, 0, 0, 0);
+    return target.getTime() >= today.getTime();
+  });
+
   const calculateDDay = (targetDate: string) => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
     const target = new Date(targetDate);
     target.setHours(0, 0, 0, 0);
     
@@ -41,24 +52,31 @@ export default function DDayCard() {
         </div>
       </div>
 
-      <div className="space-y-1.5 flex-1">
-        {days.map((d, i) => (
-          <div key={i} className="flex items-center justify-between p-4 bg-ios-bg/40 rounded-2xl border border-transparent hover:border-black/[0.03] transition-all">
-            <div className="flex items-center gap-3">
-              <div className={cn("w-1.5 h-1.5 rounded-full ring-4 ring-white shadow-sm", d.color)} />
-              <div className="flex flex-col">
-                <span className="text-[13px] font-bold text-[#1C1C1E] tracking-tight">{d.label}</span>
-                <span className="text-[8px] font-black text-ios-gray uppercase tracking-widest">{d.date}</span>
+      <div className="space-y-1.5 flex-1 overflow-y-auto max-h-[300px] pr-1 scrollbar-hide">
+        {upcomingDays.length > 0 ? (
+          upcomingDays.slice(0, 4).map((d, i) => (
+            <div key={i} className="flex items-center justify-between p-4 bg-ios-bg/40 rounded-2xl border border-transparent hover:border-black/[0.03] transition-all">
+              <div className="flex items-center gap-3">
+                <div className={cn("w-1.5 h-1.5 rounded-full ring-4 ring-white shadow-sm", d.color)} />
+                <div className="flex flex-col">
+                  <span className="text-[13px] font-bold text-[#1C1C1E] tracking-tight">{d.label}</span>
+                  <span className="text-[8px] font-black text-ios-gray uppercase tracking-widest">{d.date}</span>
+                </div>
               </div>
+              <span className={cn(
+                "text-lg font-black tracking-tighter tabular-nums",
+                (d.label.includes('지필') || d.label.includes('고사') || d.label.includes('평가')) ? "text-ios-red" : "text-[#1C1C1E]"
+              )}>
+                {calculateDDay(d.date)}
+              </span>
             </div>
-            <span className={cn(
-              "text-lg font-black tracking-tighter tabular-nums",
-              d.label.includes('중간') ? "text-ios-red" : "text-[#1C1C1E]"
-            )}>
-              {calculateDDay(d.date)}
-            </span>
+          ))
+        ) : (
+          <div className="flex flex-col items-center justify-center h-40 opacity-20">
+            <Timer className="w-8 h-8 mb-2" />
+            <p className="text-[10px] font-black uppercase tracking-widest">일정이 없습니다</p>
           </div>
-        ))}
+        )}
       </div>
     </div>
   );

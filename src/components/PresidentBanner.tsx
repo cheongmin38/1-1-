@@ -9,20 +9,41 @@ interface PresidentBannerProps {
 
 export default function PresidentBanner({ message }: PresidentBannerProps) {
   const [showDetail, setShowDetail] = useState(false);
+  const [nextEvent, setNextEvent] = useState<{ label: string; date: Date }>({
+    label: '1학기 기말고사',
+    date: new Date('2026-07-01T00:00:00+09:00')
+  });
+
   const [timeLeft, setTimeLeft] = useState<{ days: number; hours: number; minutes: number; seconds: number }>({
     days: 0, hours: 0, minutes: 0, seconds: 0,
   });
 
   useEffect(() => {
-    const midtermDate = new Date('2026-04-27T00:00:00+09:00');
+    const majorEvents = [
+      { label: '어린이날', date: '2026-05-05T00:00:00+09:00' },
+      { label: '부처님 오신 날', date: '2026-05-24T00:00:00+09:00' },
+      { label: '6월 모의고사', date: '2026-06-04T00:00:00+09:00' },
+      { label: '1학기 기말고사', date: '2026-06-29T00:00:00+09:00' },
+      { label: '여름방학', date: '2026-07-17T00:00:00+09:00' },
+    ];
+
+    const now = new Date();
+    const upcoming = majorEvents.find(e => new Date(e.date).getTime() > now.getTime());
+    
+    if (upcoming) {
+      setNextEvent({ label: upcoming.label, date: new Date(upcoming.date) });
+    }
+
     const timer = setInterval(() => {
-      const now = new Date();
-      const diff = midtermDate.getTime() - now.getTime();
+      const currentTime = new Date();
+      const targetDate = upcoming ? new Date(upcoming.date) : new Date('2026-07-01T00:00:00+09:00');
+      const diff = targetDate.getTime() - currentTime.getTime();
+      
       if (diff <= 0) {
-        clearInterval(timer);
         setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 });
         return;
       }
+      
       setTimeLeft({
         days: Math.floor(diff / (1000 * 60 * 60 * 24)),
         hours: Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
@@ -30,6 +51,7 @@ export default function PresidentBanner({ message }: PresidentBannerProps) {
         seconds: Math.floor((diff % (1000 * 60)) / 1000),
       });
     }, 1000);
+
     return () => clearInterval(timer);
   }, []);
   
@@ -57,7 +79,7 @@ export default function PresidentBanner({ message }: PresidentBannerProps) {
           <div className="absolute inset-0 bg-gradient-to-br from-ios-red/10 to-transparent opacity-50" />
           <div className="relative z-10">
             <div className="text-[9px] font-black text-ios-gray uppercase tracking-widest mb-1 flex items-center gap-1.5">
-              중간고사 <div className="w-1 h-1 bg-ios-red rounded-full animate-pulse" />
+              {nextEvent.label} <div className="w-1 h-1 bg-ios-red rounded-full animate-pulse" />
             </div>
             <div className="flex items-baseline gap-2">
               <span className="text-3xl font-black text-white tracking-tighter tabular-nums">D-{timeLeft.days}</span>
@@ -99,7 +121,7 @@ export default function PresidentBanner({ message }: PresidentBannerProps) {
                 <div className="w-12 h-12 bg-ios-red/10 text-ios-red rounded-2xl flex items-center justify-center mb-4">
                   <Flame className="w-6 h-6 fill-ios-red/10" />
                 </div>
-                <h3 className="text-xl font-[800] tracking-tight text-[#1C1C1E]">1학기 중간고사</h3>
+                <h3 className="text-xl font-[800] tracking-tight text-[#1C1C1E]">{nextEvent.label}</h3>
                 <span className="text-[10px] font-bold text-ios-gray uppercase tracking-[0.1em] mt-1 opacity-60">Academic Journey</span>
               </div>
 
