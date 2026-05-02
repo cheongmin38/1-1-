@@ -1,0 +1,22 @@
+{
+  "name": "클래스메이트 AI",
+  "short_name": "클래스메이트",
+  "description": "학생들을 위한 똑똑한 AI 학습 지원 앱",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#007AFF",
+  "icons": [
+    {
+      "src": "/src/assets/images/app_icon_v2_1777695530526.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/src/assets/images/app_icon_v2_1777695530526.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
