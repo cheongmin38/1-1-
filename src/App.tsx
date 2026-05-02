@@ -90,7 +90,7 @@ export default function App() {
     return () => unsubscribe();
   }, [studentId, studentRole]);
 
-  const [presidentMessage] = useState("평택고 1-1 친구들, 내일 수행평가 잊지 말고 준비해오자! 화이팅! 🦅");
+  const [presidentMessage] = useState("평택고 1-1 친구들, 내일 수행평가 잊지 말고 준비해오자! 화이팅! 🔥");
 
   const { quote } = getDailyContent();
 
@@ -349,7 +349,7 @@ export default function App() {
           <div className="flex items-center gap-2">
             <h2 className="text-lg font-[900] tracking-tighter opacity-10">PYEONGTAEK HS 1-1</h2>
           </div>
-          <p className="text-[10px] font-bold text-[#8E8E93] tracking-widest uppercase">© 2026 Class Management System • Ver 2.0.0 (iOS Release)</p>
+          <p className="text-[10px] font-bold text-[#8E8E93] tracking-widest uppercase">© 2026 Pyeongtaek HS 1-1 • Ver 2.0.0 (iOS Release)</p>
         </footer>
       </div>
     </LoginGate>

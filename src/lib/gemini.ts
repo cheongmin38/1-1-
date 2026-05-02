@@ -1,10 +1,10 @@
 import { GoogleGenAI } from "@google/genai";
 
 const ai = new GoogleGenAI({ 
-  apiKey: (process.env.GEMINI_API_KEY || "").trim() 
+  apiKey: (process.env.GEMINI_API_KEY || import.meta.env.VITE_GEMINI_API_KEY || "").trim() 
 });
 
-const DEFAULT_MODEL = "gemini-3-flash-preview";
+const DEFAULT_MODEL = "gemini-1.5-flash";
 
 export async function summarizeNotice(rawText: string) {
   const prompt = `

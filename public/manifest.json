@@ -1,7 +1,7 @@
 {
-  "name": "클래스메이트 AI",
-  "short_name": "클래스메이트",
-  "description": "학생들을 위한 똑똑한 AI 학습 지원 앱",
+  "name": "평택고 1학년 1반 앱",
+  "short_name": "평택고 1-1",
+  "description": "평택고등학교 1학년 1반 학생들을 위한 똑똑한 AI 학습 지원 앱",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

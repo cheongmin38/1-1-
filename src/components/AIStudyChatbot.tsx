@@ -49,10 +49,10 @@ const PERSONAS: Record<PersonaType, { title: string; desc: string; icon: any; co
 import { GoogleGenAI } from "@google/genai";
 
 const ai = new GoogleGenAI({ 
-  apiKey: (process.env.GEMINI_API_KEY || "").trim() 
+  apiKey: (process.env.GEMINI_API_KEY || import.meta.env.VITE_GEMINI_API_KEY || "").trim() 
 });
 
-const DEFAULT_MODEL = "gemini-3-flash-preview";
+const DEFAULT_MODEL = "gemini-1.5-flash";
 
 export default function AIStudyChatbot() {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -147,7 +147,7 @@ export default function AIStudyChatbot() {
           { role: 'user', parts: [{ text: userMessage.content }] }
         ],
         config: {
-          systemInstruction: `당신은 ${studentName} 학생을 위한 똑똑한 AI 공부 챗봇 '클래스메이트 AI'입니다.
+          systemInstruction: `당신은 ${studentName} 학생을 위한 똑똑한 AI 공부 챗봇 '평택고 1-1 AI'입니다.
             현재 당신의 성격 유형은 '${PERSONAS[persona].title}'입니다.
             
             [유형별 지침]
@@ -265,7 +265,7 @@ export default function AIStudyChatbot() {
           </div>
           <div>
             <h2 className="text-lg font-black text-[#1C1C1E] tracking-tight flex items-center gap-2">
-              {persona ? PERSONAS[persona].title : '클래스메이트 AI'}
+              {persona ? PERSONAS[persona].title : '평택고 1-1 AI'}
               <Sparkles className="w-4 h-4 text-ios-blue" />
             </h2>
             <p className="text-[9px] text-ios-gray font-bold uppercase tracking-widest leading-none">

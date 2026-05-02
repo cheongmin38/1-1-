@@ -184,7 +184,7 @@ export default function LoginGate({ children }: LoginGateProps) {
         
         <div className="mt-12 flex flex-col items-center gap-2">
           <p className="text-[10px] text-ios-gray text-center font-black uppercase tracking-[0.2em]">
-            Pyeongtaek Eagle Gate • Class 1-1
+            Pyeongtaek HS Gate • Class 1-1
           </p>
           <div className="flex gap-2">
             <div className="w-1 h-1 bg-ios-blue rounded-full" />
