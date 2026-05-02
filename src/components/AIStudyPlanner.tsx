@@ -18,10 +18,13 @@ interface GeneratedPlan {
   tips: string[];
 }
 
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenAI } from "@google/genai";
 
-const API_KEY = (import.meta.env.VITE_GEMINI_API_KEY || "").trim();
-const genAI = API_KEY ? new GoogleGenerativeAI(API_KEY) : null;
+const ai = new GoogleGenAI({ 
+  apiKey: (process.env.GEMINI_API_KEY || "").trim() 
+});
+
+const DEFAULT_MODEL = "gemini-3-flash-preview";
 
 export default function AIStudyPlanner() {
   const studentId = localStorage.getItem('student_id') || '0';
@@ -91,18 +94,16 @@ export default function AIStudyPlanner() {
     `;
 
     try {
-      if (!genAI) throw new Error('API_KEY_MISSING');
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-
-      const result = await model.generateContent({
+      const response = await ai.models.generateContent({
+        model: DEFAULT_MODEL,
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        generationConfig: {
+        config: {
           responseMimeType: "application/json",
           temperature: 0.7,
         }
       });
 
-      const text = result.response.text();
+      const text = response.text;
 
       if (!text) {
         throw new Error("AI로부터 응답을 받지 못했습니다. (Empty Response)");

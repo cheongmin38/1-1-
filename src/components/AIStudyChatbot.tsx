@@ -46,10 +46,13 @@ const PERSONAS: Record<PersonaType, { title: string; desc: string; icon: any; co
 };
 
 
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenAI } from "@google/genai";
 
-const API_KEY = (import.meta.env.VITE_GEMINI_API_KEY || "").trim();
-const genAI = API_KEY ? new GoogleGenerativeAI(API_KEY) : null;
+const ai = new GoogleGenAI({ 
+  apiKey: (process.env.GEMINI_API_KEY || "").trim() 
+});
+
+const DEFAULT_MODEL = "gemini-3-flash-preview";
 
 export default function AIStudyChatbot() {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -122,24 +125,28 @@ export default function AIStudyChatbot() {
     const userMessage: Message = {
       role: 'user',
       content: input.trim(),
-      timestamp: new Date().toISOString(), // Use string ISO for Firestore storage simplicity
+      timestamp: new Date().toISOString(),
     };
 
     const updatedMessages = [...messages, userMessage];
     
-    // Save initial state to state
     setMessages(updatedMessages);
     setInput('');
     setIsLoading(true);
 
-      // We save the session after getting the response, 
-      // but let's also save the user message immediately to ensure it's recorded
-      await saveChatSession(updatedMessages, persona);
+    await saveChatSession(updatedMessages, persona);
 
-      try {
-        if (!genAI) throw new Error('API_KEY_MISSING');
-        const model = genAI.getGenerativeModel({ 
-          model: "gemini-1.5-flash",
+    try {
+      const response = await ai.models.generateContentStream({
+        model: DEFAULT_MODEL,
+        contents: [
+          ...messages.map(m => ({
+            role: m.role === 'user' ? 'user' : 'model',
+            parts: [{ text: m.content }],
+          })),
+          { role: 'user', parts: [{ text: userMessage.content }] }
+        ],
+        config: {
           systemInstruction: `당신은 ${studentName} 학생을 위한 똑똑한 AI 공부 챗봇 '클래스메이트 AI'입니다.
             현재 당신의 성격 유형은 '${PERSONAS[persona].title}'입니다.
             
@@ -153,53 +160,41 @@ export default function AIStudyChatbot() {
                이후 하단에 학생이 저장할 수 있도록 "✨ 이 계획이 마음에 드시나요? 저장 버튼을 눌러보세요!" 라고 안내하세요.
             2. 단순한 답변보다는 학생이 실천할 수 있는 구체적인 행동 요령을 제시하세요.
             3. 한국어로 자연스럽게 답변하세요.`,
-        });
-
-        // Format history for GoogleGenerativeAI SDK
-        const chat = model.startChat({
-          history: messages.map(m => ({
-            role: m.role === 'user' ? 'user' : 'model',
-            parts: [{ text: m.content }],
-          })),
-        });
-
-        const result = await chat.sendMessageStream(userMessage.content);
-      
-        let fullText = "";
-        
-        // Add initial empty assistant message to be filled
-        const initialAssistantMessage: Message = {
-          role: 'assistant',
-          content: "",
-          timestamp: new Date().toISOString(),
-        };
-        
-        setMessages(prev => [...prev, initialAssistantMessage]);
-
-        for await (const chunk of result.stream) {
-          const chunkText = chunk.text();
-          if (chunkText) {
-            fullText += chunkText;
-            setMessages(prev => {
-              const newMessages = [...prev];
-              if (newMessages.length > 0) {
-                newMessages[newMessages.length - 1] = {
-                  ...newMessages[newMessages.length - 1],
-                  content: fullText
-                };
-              }
-              return newMessages;
-            });
-          }
         }
+      });
+    
+      let fullText = "";
+      
+      const initialAssistantMessage: Message = {
+        role: 'assistant',
+        content: '',
+        timestamp: new Date().toISOString(),
+      };
+      
+      setMessages(prev => [...prev, initialAssistantMessage]);
 
-        // After streaming is complete, save the final state to Firestore
-        const finalAssistantMessage: Message = {
-          role: 'assistant',
-          content: fullText,
-          timestamp: new Date().toISOString(),
-        };
-        await saveChatSession([...updatedMessages, finalAssistantMessage], persona);
+      for await (const chunk of response) {
+        if (chunk.text) {
+          fullText += chunk.text;
+          setMessages(prev => {
+            const newMessages = [...prev];
+            if (newMessages.length > 0) {
+              newMessages[newMessages.length - 1] = {
+                ...newMessages[newMessages.length - 1],
+                content: fullText
+              };
+            }
+            return newMessages;
+          });
+        }
+      }
+
+      const finalAssistantMessage: Message = {
+        role: 'assistant',
+        content: fullText,
+        timestamp: new Date().toISOString(),
+      };
+      await saveChatSession([...updatedMessages, finalAssistantMessage], persona);
 
     } catch (error: any) {
       console.error("Chat Error:", error);
@@ -211,7 +206,14 @@ export default function AIStudyChatbot() {
           : `죄송해요, 응답을 생성하는 중에 오류가 발생했어요. (${error.message})`,
         timestamp: new Date().toISOString(),
       };
-      setMessages(prev => [...prev.slice(0, -1), errorMessage]);
+      setMessages(prev => {
+        const list = [...prev];
+        if (list.length > 0 && list[list.length - 1].content === '') {
+          list[list.length - 1] = errorMessage;
+          return list;
+        }
+        return [...list, errorMessage];
+      });
       await saveChatSession([...updatedMessages, errorMessage], persona);
     } finally {
       setIsLoading(false);
