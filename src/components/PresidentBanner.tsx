@@ -2,44 +2,59 @@ import { useState, useEffect } from 'react';
 import { Bell, Timer, Flame, X, Sparkles, Trophy } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '@/src/lib/utils';
+import { db } from '@/src/lib/firebase';
+import { collection, query, orderBy, onSnapshot, limit, where } from 'firebase/firestore';
+import { handleFirestoreError, OperationType } from '@/src/lib/errorHandlers';
 
 interface PresidentBannerProps {
   message: string;
 }
 
+interface AcademicEvent {
+  label: string;
+  date: string;
+}
+
 export default function PresidentBanner({ message }: PresidentBannerProps) {
   const [showDetail, setShowDetail] = useState(false);
-  const [nextEvent, setNextEvent] = useState<{ label: string; date: Date }>({
-    label: '1학기 기말고사',
-    date: new Date('2026-07-01T00:00:00+09:00')
-  });
+  const [nextEvent, setNextEvent] = useState<{ label: string; date: Date } | null>(null);
 
   const [timeLeft, setTimeLeft] = useState<{ days: number; hours: number; minutes: number; seconds: number }>({
     days: 0, hours: 0, minutes: 0, seconds: 0,
   });
 
   useEffect(() => {
-    const majorEvents = [
-      { label: '어린이날 (휴교)', date: '2026-05-05T00:00:00+09:00' },
-      { label: '스승의 날', date: '2026-05-15T00:00:00+09:00' },
-      { label: '부처님 오신 날', date: '2026-05-24T00:00:00+09:00' },
-      { label: '6월 모의고사', date: '2026-06-04T00:00:00+09:00' },
-      { label: '현충일 (휴교)', date: '2026-06-06T00:00:00+09:00' },
-      { label: '1학기 기말고사', date: '2026-06-29T00:00:00+09:00' },
-      { label: '여름방학 시작', date: '2026-07-17T00:00:00+09:00' },
-    ];
+    const todayStr = new Date().toISOString().split('T')[0];
+    const q = query(
+      collection(db, 'academic_calendar'), 
+      where('date', '>=', todayStr),
+      orderBy('date', 'asc'),
+      limit(1)
+    );
 
-    const now = new Date();
-    const upcoming = majorEvents.find(e => new Date(e.date).getTime() > now.getTime());
-    
-    if (upcoming) {
-      setNextEvent({ label: upcoming.label, date: new Date(upcoming.date) });
-    }
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      if (!snapshot.empty) {
+        const data = snapshot.docs[0].data() as AcademicEvent;
+        setNextEvent({
+          label: data.label,
+          date: new Date(`${data.date}T00:00:00+09:00`)
+        });
+      } else {
+        setNextEvent(null);
+      }
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'academic_calendar');
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (!nextEvent) return;
 
     const timer = setInterval(() => {
       const currentTime = new Date();
-      const targetDate = upcoming ? new Date(upcoming.date) : new Date('2026-07-01T00:00:00+09:00');
-      const diff = targetDate.getTime() - currentTime.getTime();
+      const diff = nextEvent.date.getTime() - currentTime.getTime();
       
       if (diff <= 0) {
         setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 });
@@ -55,7 +70,7 @@ export default function PresidentBanner({ message }: PresidentBannerProps) {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, []);
+  }, [nextEvent]);
   
   return (
     <>
@@ -79,16 +94,25 @@ export default function PresidentBanner({ message }: PresidentBannerProps) {
           className="bg-[#1C1C1E] p-6 rounded-3xl shadow-lg w-full flex items-center justify-between active:scale-[0.98] transition-all group overflow-hidden relative"
         >
           <div className="absolute inset-0 bg-gradient-to-br from-ios-red/10 to-transparent opacity-50" />
-          <div className="relative z-10">
-            <div className="text-[9px] font-black text-ios-gray uppercase tracking-widest mb-1 flex items-center gap-1.5">
-              {nextEvent.label} <div className="w-1 h-1 bg-ios-red rounded-full animate-pulse" />
-            </div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-3xl font-black text-white tracking-tighter tabular-nums">D-{timeLeft.days}</span>
-              <span className="text-[11px] font-medium text-ios-gray/80 font-mono tracking-tighter">
-                {String(timeLeft.hours).padStart(2, '0')}:{String(timeLeft.minutes).padStart(2, '0')}
-              </span>
-            </div>
+          <div className="relative z-10 w-full text-left">
+            {nextEvent ? (
+              <>
+                <div className="text-[9px] font-black text-ios-gray uppercase tracking-widest mb-1 flex items-center gap-1.5">
+                  {nextEvent.label} <div className="w-1 h-1 bg-ios-red rounded-full animate-pulse" />
+                </div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-3xl font-black text-white tracking-tighter tabular-nums">D-{timeLeft.days}</span>
+                  <span className="text-[11px] font-medium text-ios-gray/80 font-mono tracking-tighter">
+                    {String(timeLeft.hours).padStart(2, '0')}:{String(timeLeft.minutes).padStart(2, '0')}
+                  </span>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="text-[9px] font-black text-ios-gray uppercase tracking-widest mb-1">다음 일정 없음</div>
+                <div className="text-3xl font-black text-white tracking-tighter tabular-nums">D-Day</div>
+              </>
+            )}
           </div>
           <div className="relative z-10 w-10 h-10 bg-white/5 rounded-xl flex items-center justify-center group-hover:bg-white/10 transition-colors">
              <Flame className="w-5 h-5 text-ios-red opacity-80" />
@@ -98,7 +122,7 @@ export default function PresidentBanner({ message }: PresidentBannerProps) {
 
       {/* Countdown Detail Overlay */}
       <AnimatePresence>
-        {showDetail && (
+        {showDetail && nextEvent && (
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}

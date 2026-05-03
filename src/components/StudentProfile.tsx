@@ -4,14 +4,18 @@ import { User, Target, BookOpen, Clock, ChevronRight, LogOut, Sparkles, Award, S
 import { db } from '@/src/lib/firebase';
 import { collection, query, where, orderBy, onSnapshot, doc, getDoc, setDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { cn } from '@/src/lib/utils';
+import { handleFirestoreError, OperationType } from '@/src/lib/errorHandlers';
 
 import { STUDENT_LIST } from '@/src/constants/students';
 
 interface StudyPlan {
   id: string;
-  subject: string;
-  goal: string;
-  plan: any;
+  subject?: string;
+  goal?: string;
+  plan?: any;
+  title?: string;
+  content?: string;
+  type?: 'chatbot' | 'manual';
   createdAt: any;
 }
 
@@ -48,6 +52,8 @@ export default function StudentProfile({ viewingId }: { viewingId?: string | nul
       } else {
         setPersonalGoal('');
       }
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, `profiles/${targetId}`);
     });
 
     // Load teacher auth code if teacher and viewing self
@@ -57,6 +63,8 @@ export default function StudentProfile({ viewingId }: { viewingId?: string | nul
         if (doc.exists()) {
           setTeacherPassword(doc.data().password || '0000');
         }
+      }, (error) => {
+        handleFirestoreError(error, OperationType.GET, 'config/teacher_auth');
       });
       return () => {
         unsubscribeProfile();
@@ -64,28 +72,63 @@ export default function StudentProfile({ viewingId }: { viewingId?: string | nul
       };
     }
 
-    // Load saved plans
-    const q = query(
+    // Load study_plans (from Planner)
+    const qManual = query(
       collection(db, 'study_plans'),
       where('studentId', '==', targetId),
       orderBy('createdAt', 'desc')
     );
-    const unsubscribePlans = onSnapshot(q, (snapshot) => {
-      const plans = snapshot.docs.map(doc => ({
+    
+    // Load saved_plans (from Chatbot)
+    const qChat = query(
+      collection(db, 'saved_plans'),
+      where('studentId', '==', targetId),
+      orderBy('createdAt', 'desc')
+    );
+
+    let manualPlans: StudyPlan[] = [];
+    let chatPlans: StudyPlan[] = [];
+
+    const updateMergedPlans = () => {
+      const merged = [...manualPlans, ...chatPlans].sort((a, b) => {
+        const timeA = a.createdAt?.toMillis?.() || (typeof a.createdAt === 'string' ? new Date(a.createdAt).getTime() : (a.createdAt?.seconds ? a.createdAt.seconds * 1000 : 0));
+        const timeB = b.createdAt?.toMillis?.() || (typeof b.createdAt === 'string' ? new Date(b.createdAt).getTime() : (b.createdAt?.seconds ? b.createdAt.seconds * 1000 : 0));
+        return timeB - timeA;
+      });
+      setSavedPlans(merged);
+      setIsLoading(false);
+    };
+
+    const unsubscribeManual = onSnapshot(qManual, (snapshot) => {
+      manualPlans = snapshot.docs.map(doc => ({
         id: doc.id,
+        type: 'manual' as const,
         ...doc.data()
       })) as StudyPlan[];
-      setSavedPlans(plans);
-      setIsLoading(false);
+      updateMergedPlans();
     }, (error) => {
-      console.error("Error loading plans:", error);
-      setSavedPlans([]);
-      setIsLoading(false);
+      handleFirestoreError(error, OperationType.LIST, 'study_plans');
+      console.error("Error loading manual plans:", error);
+      updateMergedPlans();
+    });
+
+    const unsubscribeChat = onSnapshot(qChat, (snapshot) => {
+      chatPlans = snapshot.docs.map(doc => ({
+        id: doc.id,
+        type: 'chatbot' as const,
+        ...doc.data()
+      })) as StudyPlan[];
+      updateMergedPlans();
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'saved_plans');
+      console.error("Error loading chat plans:", error);
+      updateMergedPlans();
     });
 
     return () => {
       unsubscribeProfile();
-      unsubscribePlans();
+      unsubscribeManual();
+      unsubscribeChat();
     };
   }, [targetId, targetName, isViewingOthers, studentRole]);
 
@@ -138,10 +181,11 @@ export default function StudentProfile({ viewingId }: { viewingId?: string | nul
     }
   };
 
-  const handleDeletePlan = async (id: string) => {
+  const handleDeletePlan = async (id: string, type?: string) => {
     if (!confirm('이 학습 계획을 삭제할까요?')) return;
     try {
-      await deleteDoc(doc(db, 'study_plans', id));
+      const collectionName = type === 'chatbot' ? 'saved_plans' : 'study_plans';
+      await deleteDoc(doc(db, collectionName, id));
     } catch (err) {
       console.error(err);
       alert('삭제 중 오류가 발생했습니다.');
@@ -326,21 +370,28 @@ export default function StudentProfile({ viewingId }: { viewingId?: string | nul
                          <BookOpen className="w-5 h-5" />
                        </div>
                        <div>
-                         <h4 className="text-base font-black text-[#1C1C1E] tracking-tight">{plan.subject} 마스터 플랜</h4>
+                         <h4 className="text-base font-black text-[#1C1C1E] tracking-tight">
+                           {plan.type === 'chatbot' ? (plan.title || 'AI 상담 계획') : `${plan.subject} 마스터 플랜`}
+                         </h4>
                          <p className="text-[10px] font-bold text-ios-gray uppercase tracking-widest truncate max-w-[200px]">
-                           {plan.createdAt?.toDate ? plan.createdAt.toDate().toLocaleDateString() : '방금 전'} • {plan.goal}
+                           {plan.createdAt?.toDate ? plan.createdAt.toDate().toLocaleDateString() : '방금 전'} • {plan.type === 'chatbot' ? 'Chat AI' : plan.goal}
                          </p>
                        </div>
                      </div>
                      <button 
-                       onClick={() => handleDeletePlan(plan.id)}
+                       onClick={() => handleDeletePlan(plan.id, plan.type)}
                        className="p-2 text-ios-red/30 hover:text-ios-red hover:bg-ios-red/5 rounded-xl transition-all opacity-0 group-hover:opacity-100"
                      >
                        <Trash2 className="w-4 h-4" />
                      </button>
                    </div>
                    <div className="flex items-center justify-between pt-4 border-t border-black/[0.03]">
-                      <span className="text-[10px] font-black text-ios-blue uppercase tracking-widest">AI Roadmap Ready</span>
+                      <span className={cn(
+                         "text-[10px] font-black uppercase tracking-widest",
+                         plan.type === 'chatbot' ? "text-ios-pink" : "text-ios-blue"
+                       )}>
+                         {plan.type === 'chatbot' ? 'AI Consultation' : 'AI Roadmap Ready'}
+                       </span>
                       <button 
                         onClick={() => setExpandedPlanId(expandedPlanId === plan.id ? null : plan.id)}
                         className="flex items-center gap-1 text-[10px] font-black text-ios-gray uppercase tracking-widest opacity-60 hover:opacity-100 transition-opacity"

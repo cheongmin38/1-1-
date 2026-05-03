@@ -2,8 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Bot, Send, User, Loader2, Sparkles, Brain, Save, Trash2, History, ChevronRight, MessageSquare, BookOpen, GraduationCap, Flame, Target, Wand2 } from 'lucide-react';
 import { db } from '@/src/lib/firebase';
-import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, deleteDoc, doc, limit, setDoc } from 'firebase/firestore';
+import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, deleteDoc, doc, limit, setDoc, where } from 'firebase/firestore';
 import { cn } from '@/src/lib/utils';
+import { handleFirestoreError, OperationType } from '@/src/lib/errorHandlers';
 
 interface Message {
   id?: string;
@@ -106,13 +107,20 @@ export default function AIStudyChatbot() {
   };
 
   useEffect(() => {
-    const q = query(collection(db, 'saved_plans'), orderBy('createdAt', 'desc'));
+    if (studentId === 'unknown') return;
+
+    const q = query(
+      collection(db, 'saved_plans'), 
+      where('studentId', '==', studentId),
+      orderBy('createdAt', 'desc'),
+      limit(20)
+    );
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const plans = snapshot.docs
-        .map(doc => ({ id: doc.id, ...doc.data() }))
-        .filter((plan: any) => plan.studentId === studentId) as SavedPlan[];
+        .map(doc => ({ id: doc.id, ...doc.data() })) as SavedPlan[];
       setSavedPlans(plans);
     }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'saved_plans');
       console.error("Saved plans load error:", error);
     });
     return () => unsubscribe();
@@ -220,7 +228,12 @@ export default function AIStudyChatbot() {
     }
   };
 
-  const savePlan = async (content: string) => {
+  const [isSavingPlan, setIsSavingPlan] = useState<string | null>(null);
+
+  const savePlan = async (messageId: string, content: string) => {
+    if (isSavingPlan) return;
+    setIsSavingPlan(messageId);
+    
     // Extract title from assistant response if it looks like a plan (e.g., ### Title)
     const titleMatch = content.match(/###\s+(.*)/);
     const title = titleMatch ? titleMatch[1].trim() : `${new Date().toLocaleDateString()} 학습 계획`;
@@ -231,11 +244,14 @@ export default function AIStudyChatbot() {
         title,
         content,
         createdAt: serverTimestamp(),
+        type: 'chatbot'
       });
       alert("학습 계획이 '나의 계획'에 저장되었습니다!");
     } catch (error) {
       console.error("Save Plan Error:", error);
       alert("계획 저장에 실패했습니다.");
+    } finally {
+      setIsSavingPlan(null);
     }
   };
 
@@ -417,10 +433,11 @@ export default function AIStudyChatbot() {
                       
                       {m.role === 'assistant' && (m.content.includes('###') || m.content.includes('계획')) && (
                         <button 
-                          onClick={() => savePlan(m.content)}
-                          className="mt-4 w-full flex items-center justify-center gap-2 px-4 py-3 bg-ios-blue text-white rounded-2xl text-xs font-black transition-all hover:bg-ios-blue/90 shadow-lg shadow-ios-blue/20"
+                          onClick={() => savePlan(`msg-${i}`, m.content)}
+                          disabled={isSavingPlan === `msg-${i}`}
+                          className="mt-4 w-full flex items-center justify-center gap-2 px-4 py-3 bg-ios-blue text-white rounded-2xl text-xs font-black transition-all hover:bg-ios-blue/90 shadow-lg shadow-ios-blue/20 disabled:opacity-50"
                         >
-                          <Save className="w-4 h-4" />
+                          {isSavingPlan === `msg-${i}` ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                           이 계획을 '나의 계획'에 저장하기
                         </button>
                       )}
@@ -454,21 +471,27 @@ export default function AIStudyChatbot() {
               </div>
 
               {/* Input Area */}
-              <div className="p-4 bg-white border-t border-black/5">
-                <form onSubmit={handleSendMessage} className="flex items-center gap-2 relative max-w-4xl mx-auto w-full">
-                  <input
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    placeholder={isLoading ? "답변을 기다리는 중..." : "질문을 입력하세요..."}
-                    disabled={isLoading}
-                    className="flex-1 bg-[#F2F2F7] rounded-[24px] px-6 py-4 text-[15px] font-medium focus:outline-none focus:ring-2 focus:ring-ios-blue/20 transition-all pr-14"
-                  />
+              <div className="p-4 bg-white border-t border-black/5 pb-8 sm:pb-4">
+                <form 
+                  onSubmit={handleSendMessage} 
+                  className="flex items-center gap-2 max-w-4xl mx-auto w-full"
+                >
+                  <div className="flex-1 relative">
+                    <input
+                      value={input}
+                      onChange={(e) => setInput(e.target.value)}
+                      placeholder={isLoading ? "답변을 기다리는 중..." : "질문을 입력하세요..."}
+                      disabled={isLoading}
+                      className="w-full bg-[#F2F2F7] rounded-[24px] px-6 py-4 text-[15px] font-medium focus:outline-none focus:ring-2 focus:ring-ios-blue/20 transition-all"
+                    />
+                  </div>
                   <button 
                     type="submit"
                     disabled={!input.trim() || isLoading}
-                    className="absolute right-2 p-2.5 bg-ios-blue text-white rounded-xl shadow-lg shadow-ios-blue/20 disabled:opacity-50 active:scale-95 transition-all"
+                    className="flex-shrink-0 w-12 h-12 flex items-center justify-center bg-ios-blue text-white rounded-full shadow-lg shadow-ios-blue/20 disabled:opacity-30 active:scale-90 transition-all touch-manipulation"
+                    aria-label="보내기"
                   >
-                    <Send className="w-5 h-5" />
+                    <Send className="w-5 h-5 ml-0.5" />
                   </button>
                 </form>
               </div>

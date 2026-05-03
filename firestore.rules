@@ -65,6 +65,16 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
+    // Academic Calendar
+    match /academic_calendar/{eventId} {
+      allow read: if true;
+      allow create: if request.resource.data.label is string 
+                    && request.resource.data.label.size() <= 200
+                    && request.resource.data.date is string;
+      allow delete: if true;
+      allow update: if false;
+    }
+
     // Config
     match /config/{docId} {
       allow read: if true;

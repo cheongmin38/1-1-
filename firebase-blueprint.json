@@ -130,6 +130,18 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["studentId", "title", "content", "createdAt"]
+    },
+    "AcademicCalendar": {
+      "title": "Academic Calendar Event",
+      "description": "System-wide academic events managed by teachers",
+      "type": "object",
+      "properties": {
+        "label": { "type": "string" },
+        "date": { "type": "string", "format": "date" },
+        "color": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["label", "date", "color", "createdAt"]
     }
   },
   "firestore": {
@@ -172,6 +184,10 @@
     "/notifications/{notificationId}": {
       "schema": "Notification",
       "description": "User notifications"
+    },
+    "/academic_calendar/{eventId}": {
+      "schema": "AcademicCalendar",
+      "description": "School academic events"
     }
   }
 }
