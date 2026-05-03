@@ -20,11 +20,13 @@ export default function PresidentBanner({ message }: PresidentBannerProps) {
 
   useEffect(() => {
     const majorEvents = [
-      { label: '어린이날', date: '2026-05-05T00:00:00+09:00' },
+      { label: '어린이날 (휴교)', date: '2026-05-05T00:00:00+09:00' },
+      { label: '스승의 날', date: '2026-05-15T00:00:00+09:00' },
       { label: '부처님 오신 날', date: '2026-05-24T00:00:00+09:00' },
       { label: '6월 모의고사', date: '2026-06-04T00:00:00+09:00' },
+      { label: '현충일 (휴교)', date: '2026-06-06T00:00:00+09:00' },
       { label: '1학기 기말고사', date: '2026-06-29T00:00:00+09:00' },
-      { label: '여름방학', date: '2026-07-17T00:00:00+09:00' },
+      { label: '여름방학 시작', date: '2026-07-17T00:00:00+09:00' },
     ];
 
     const now = new Date();

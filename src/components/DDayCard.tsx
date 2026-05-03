@@ -15,7 +15,7 @@ export default function DDayCard() {
     { label: '스승의 날', date: '2026-05-15', color: 'bg-ios-blue' },
     { label: '부처님 오신 날', date: '2026-05-24', color: 'bg-ios-orange' },
     { label: '6월 모의고사', date: '2026-06-04', color: 'bg-ios-red' },
-    { label: '현충일', date: '2026-06-06', color: 'bg-ios-blue' },
+    { label: '현충일 (휴교)', date: '2026-06-06', color: 'bg-ios-blue' },
     { label: '1학기 기말고사', date: '2026-06-29', color: 'bg-ios-red' },
     { label: '여름방학 시작', date: '2026-07-17', color: 'bg-ios-blue' },
   ]);

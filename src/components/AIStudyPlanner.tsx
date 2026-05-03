@@ -21,10 +21,10 @@ interface GeneratedPlan {
 import { GoogleGenAI } from "@google/genai";
 
 const ai = new GoogleGenAI({ 
-  apiKey: (process.env.GEMINI_API_KEY || import.meta.env.VITE_GEMINI_API_KEY || "").trim() 
+  apiKey: (process.env.GEMINI_API_KEY || "").trim() 
 });
 
-const DEFAULT_MODEL = "gemini-1.5-flash";
+const DEFAULT_MODEL = "gemini-3-flash-preview";
 
 export default function AIStudyPlanner() {
   const studentId = localStorage.getItem('student_id') || '0';
@@ -76,6 +76,7 @@ export default function AIStudyPlanner() {
     const modelLabel = levels.find(l => l.id === currentLevel)?.label || currentLevel;
 
     const prompt = `
+      당신은 평택고등학교 1학년 1반 학생인 ${studentId}번 학생을 돕는 '평택고 1-1 AI 학습 비서'입니다.
       학생의 과목별 목표 달성을 위한 7일간의 세세한 AI 학습 계획을 세워줘.
       과목: ${subject}
       현재 수준/상태: ${modelLabel}
