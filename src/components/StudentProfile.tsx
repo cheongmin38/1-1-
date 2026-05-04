@@ -5,6 +5,7 @@ import { db } from '@/src/lib/firebase';
 import { collection, query, where, orderBy, onSnapshot, doc, getDoc, setDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { cn } from '@/src/lib/utils';
 import { handleFirestoreError, OperationType } from '@/src/lib/errorHandlers';
+import ReactMarkdown from 'react-markdown';
 
 import { STUDENT_LIST } from '@/src/constants/students';
 
@@ -378,12 +379,14 @@ export default function StudentProfile({ viewingId }: { viewingId?: string | nul
                          </p>
                        </div>
                      </div>
-                     <button 
-                       onClick={() => handleDeletePlan(plan.id, plan.type)}
-                       className="p-2 text-ios-red/30 hover:text-ios-red hover:bg-ios-red/5 rounded-xl transition-all opacity-0 group-hover:opacity-100"
-                     >
-                       <Trash2 className="w-4 h-4" />
-                     </button>
+                     {(!isViewingOthers || studentRole === 'teacher') && (
+                       <button 
+                         onClick={() => handleDeletePlan(plan.id, plan.type)}
+                         className="p-2 text-ios-red/40 hover:text-ios-red hover:bg-ios-red/5 rounded-xl transition-all"
+                       >
+                         <Trash2 className="w-4 h-4" />
+                       </button>
+                     )}
                    </div>
                    <div className="flex items-center justify-between pt-4 border-t border-black/[0.03]">
                       <span className={cn(
@@ -409,30 +412,42 @@ export default function StudentProfile({ viewingId }: { viewingId?: string | nul
                          className="overflow-hidden"
                        >
                          <div className="pt-6 mt-4 border-t border-black/[0.03] space-y-6">
-                            <div className="bg-ios-bg p-4 rounded-2xl italic text-sm font-bold text-[#1C1C1E]">
-                               "{plan.plan.summary}"
-                            </div>
-                            <div className="space-y-4">
-                               {plan.plan.steps.map((step: any, sIdx: number) => (
-                                 <div key={sIdx} className="flex gap-4">
-                                    <div className="w-10 h-10 bg-[#1C1C1E] text-white rounded-xl flex items-center justify-center shrink-0 text-xs font-black">
-                                       {step.day}
-                                    </div>
-                                    <div>
-                                       <h5 className="text-sm font-black text-[#1C1C1E] mb-1">{step.focus}</h5>
-                                       <ul className="space-y-1">
-                                          {step.details.map((detail: string, dIdx: number) => (
-                                            <li key={dIdx} className="text-[12px] font-medium text-ios-gray flex items-start gap-2">
-                                               <span className="text-ios-blue">•</span>
-                                               {detail}
-                                            </li>
-                                          ))}
-                                       </ul>
-                                    </div>
-                                 </div>
-                               ))}
-                            </div>
-                         </div>
+                            {plan.type === 'chatbot' ? (
+                              <div className="prose prose-sm max-w-none text-[#1C1C1E] font-medium leading-relaxed">
+                                <ReactMarkdown>{plan.content || ''}</ReactMarkdown>
+                              </div>
+                            ) : plan.plan ? (
+                              <div className="space-y-6">
+                                {plan.plan.summary && (
+                                  <div className="bg-ios-bg p-4 rounded-2xl italic text-sm font-bold text-[#1C1C1E]">
+                                     "{plan.plan.summary}"
+                                  </div>
+                                )}
+                                <div className="space-y-4">
+                                   {Array.isArray(plan.plan.steps) && plan.plan.steps.map((step: any, sIdx: number) => (
+                                     <div key={sIdx} className="flex gap-4">
+                                        <div className="w-10 h-10 bg-[#1C1C1E] text-white rounded-xl flex items-center justify-center shrink-0 text-xs font-black">
+                                           {step.day}
+                                        </div>
+                                        <div>
+                                           <h5 className="text-sm font-black text-[#1C1C1E] mb-1">{step.focus}</h5>
+                                           <ul className="space-y-1">
+                                              {Array.isArray(step.details) && step.details.map((detail: string, dIdx: number) => (
+                                                <li key={dIdx} className="text-[12px] font-medium text-ios-gray flex items-start gap-2">
+                                                   <span className="text-ios-blue">•</span>
+                                                   {detail}
+                                                </li>
+                                              ))}
+                                           </ul>
+                                        </div>
+                                     </div>
+                                   ))}
+                                </div>
+                              </div>
+                            ) : (
+                              <p className="text-xs font-bold text-ios-gray italic">상세 계획 정보가 없습니다.</p>
+                            )}
+                          </div>
                        </motion.div>
                      )}
                    </AnimatePresence>
