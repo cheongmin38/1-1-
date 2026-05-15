@@ -1,4 +1,6 @@
 
+import { getDayOfYear } from 'date-fns';
+
 export const QUOTES = [
   { text: "성공은 최종적인 것이 아니며, 실패는 치명적인 것이 아니다. 중요한 것은 계속해 나가는 용기다.", author: "윈스턴 처칠" },
   { text: "천재는 1%의 영감과 99%의 노력으로 이루어진다.", author: "토마스 에디슨" },
@@ -58,11 +60,16 @@ export const IDIOMS = [
 ];
 
 export function getDailyContent() {
-  const today = new Date();
-  const dayOfYear = Math.floor((today.getTime() - new Date(today.getFullYear(), 0, 0).getTime()) / 86400000);
+  // Use KST (UTC+9) for daily rotation
+  const now = new Date();
+  const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+  const kstToday = new Date(utc + (9 * 3600000));
+  
+  const dayOfYear = getDayOfYear(kstToday);
   
   const quote = QUOTES[dayOfYear % QUOTES.length];
   const idiom = IDIOMS[dayOfYear % IDIOMS.length];
   
   return { quote, idiom };
 }
+

@@ -13,6 +13,16 @@ export const SCHOOL_CONFIG = {
   CLASS_NM: '1',
 };
 
+/**
+ * Get current date in KST (UTC+9)
+ * NEIS API expects dates in KST.
+ */
+function getKSTDate(date: Date = new Date()): Date {
+  const utc = date.getTime() + (date.getTimezoneOffset() * 60000);
+  const kst = new Date(utc + (9 * 3600000));
+  return kst;
+}
+
 export interface MealInfo {
   type: '중식' | '석식';
   menu: string[];
@@ -47,11 +57,12 @@ export const FALLBACK_TIMETABLE: TimetableInfo[] = [
   { perio: '4', itrtNm: '통합사회' },
   { perio: '5', itrtNm: '통합과학' },
   { perio: '6', itrtNm: '한국사' },
-  { perio: '7', itrtNm: '자율' },
+  { perio: '7', itrtNm: '창체' },
 ];
 
 export async function fetchDailyMeals(date: Date = new Date()): Promise<MealInfo[]> {
-  const formattedDate = format(date, 'yyyyMMdd');
+  const kstDate = getKSTDate(date);
+  const formattedDate = format(kstDate, 'yyyyMMdd');
   
   const params = new URLSearchParams({
     Type: 'json',
@@ -63,7 +74,7 @@ export async function fetchDailyMeals(date: Date = new Date()): Promise<MealInfo
   });
 
   try {
-    const response = await fetch(`${MEAL_API_URL}?${params.toString()}`);
+    const response = await fetch(`/api/neis/mealServiceDietInfo?${params.toString()}`);
     const data = await response.json();
 
     if (data.mealServiceDietInfo) {
@@ -86,21 +97,29 @@ export async function fetchDailyMeals(date: Date = new Date()): Promise<MealInfo
       });
     }
     
-    // Fallback if API returns no data for specific date
+    // Explicit handle for no data (e.g. weekends)
+    if (data.RESULT && data.RESULT.CODE === 'INFO-200') {
+      console.warn(`No meal data registered for ${formattedDate}`);
+      return []; // Return empty instead of fallback to avoid confusion
+    }
+
+    if (data.RESULT && data.RESULT.CODE !== 'INFO-000') {
+      console.error('NEIS API Error Code:', data.RESULT.CODE, data.RESULT.MESSAGE);
+    }
+    
     return FALLBACK_MEALS;
   } catch (error) {
-    console.error('NEIS Meal API Error:', error);
+    console.error('NEIS Meal API Fetch Error:', error);
     return FALLBACK_MEALS;
   }
 }
 
 export async function fetchDailyTimetable(date: Date = new Date()): Promise<TimetableInfo[]> {
-  const formattedDate = format(date, 'yyyyMMdd');
+  const kstDate = getKSTDate(date);
+  const formattedDate = format(kstDate, 'yyyyMMdd');
   
-  // Current school year based on system date (2026)
-  const ay = format(date, 'yyyy');
-  // Semester (usually March-August is 1, Sept-Feb is 2)
-  const month = date.getMonth() + 1;
+  const ay = format(kstDate, 'yyyy');
+  const month = kstDate.getMonth() + 1;
   const sem = (month >= 3 && month <= 8) ? '1' : '2';
 
   const params = new URLSearchParams({
@@ -117,21 +136,31 @@ export async function fetchDailyTimetable(date: Date = new Date()): Promise<Time
   });
 
   try {
-    const response = await fetch(`${TIMETABLE_API_URL}?${params.toString()}`);
+    const response = await fetch(`/api/neis/hisTimetable?${params.toString()}`);
     const data = await response.json();
 
     if (data.hisTimetable) {
       const rows = data.hisTimetable[1].row;
       return rows.map((row: any) => ({
         perio: row.PERIO,
-        itrtNm: row.ITRT_NM || row.ITRT_CNTNT || '수업', // Fallback for field names
+        itrtNm: row.ITRT_NM || row.ITRT_CNTNT || '수업',
       })).sort((a: any, b: any) => Number(a.perio) - Number(b.perio));
     }
     
-    // Fallback if API returns no data
+    // Explicit handle for no data
+    if (data.RESULT && data.RESULT.CODE === 'INFO-200') {
+      console.warn(`No timetable registered for ${formattedDate}`);
+      return [];
+    }
+
+    if (data.RESULT && data.RESULT.CODE !== 'INFO-000') {
+      console.error('NEIS API Error Code:', data.RESULT.CODE, data.RESULT.MESSAGE);
+    }
+    
     return FALLBACK_TIMETABLE;
   } catch (error) {
-    console.error('NEIS Timetable API Error:', error);
+    console.error('NEIS Timetable API Fetch Error:', error);
     return FALLBACK_TIMETABLE;
   }
 }
+
