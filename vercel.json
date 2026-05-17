@@ -1,0 +1,12 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/neis/:path*",
+      "destination": "/api/neis?path=:path*"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
